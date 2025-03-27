@@ -16,9 +16,9 @@ router.post("/instances", (req, res) => {
     const { ip, name } = req.body;
     if (!ip) return res.status(400).json({ error: "IP is required" });
 
-    db.run("INSERT INTO instances (ip, name) VALUES (?, ?)", [ip, name || `WLED-${ip}`], function (err) {
+    db.run("INSERT INTO instances (ip, name) VALUES (?, ?)", [ip, name], function (err) {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: this.lastID, ip, name: name || `WLED-${ip}` });
+        res.json({ id: this.lastID, ip, name});
     });
 });
 
