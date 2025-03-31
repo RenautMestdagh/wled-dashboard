@@ -6,6 +6,8 @@ const wledController = require('../controllers/wled');
 router.post('/:instanceId/state', wledController.setState);
 router.get('/:instanceId/state', wledController.getState);
 
+router.get('/:instanceId/info', wledController.getInstanceInfo);
+
 // Endpoint for wled presets
 router.get('/:instanceId/presets.json', wledController.getWledPresets);
 

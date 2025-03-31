@@ -51,5 +51,18 @@ module.exports = {
                 details: error.message
             });
         }
+    },
+
+    getInstanceInfo: async (req, res) => {
+        try {
+            const { instanceId } = req.params;
+            const info = await wledService.getInstanceInfo(instanceId);
+            res.json(info);
+        } catch (error) {
+            res.status(502).json({
+                error: 'Failed to communicate with WLED instance',
+                details: error.message
+            });
+        }
     }
 };

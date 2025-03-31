@@ -1,12 +1,45 @@
 const db = require('../config/database');
 const {get} = require("axios");
+const {getInstanceInfo} = require("../services/wled");
 
 module.exports = {
-    getAllInstances: (req, res) => {
-        db.all("SELECT * FROM instances ORDER BY name", [], (err, rows) => {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json(rows);
-        });
+    getAllInstances: async (req, res) => {
+        try {
+            // First get all instances from the database
+            const instances = await new Promise((resolve, reject) => {
+                db.all("SELECT * FROM instances ORDER BY name", [], (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows);
+                });
+            });
+
+            // Process each instance to check for empty names
+            const processedInstances = await Promise.all(
+                instances.map(async (instance) => {
+                    // If name is not empty, return as-is
+                    if (instance.name && instance.name.trim() !== '') {
+                        return instance;
+                    }
+
+                    try {
+                        const info = await getInstanceInfo(instance.id);
+                        if (info && info.name) {
+                            // Return the instance with updated name (only in response)
+                            return { ...instance, name: info.name.trim() };
+                        }
+                    } catch (error) {
+                        console.error(`Failed to fetch info for instance ${instance.id}:`, error);
+                    }
+
+                    return instance;
+                })
+            );
+
+            res.json(processedInstances);
+        } catch (error) {
+            console.error('Failed to get instances:', error);
+            res.status(500).json({ error: error.message });
+        }
     },
 
     createInstance: async (req, res) => {
