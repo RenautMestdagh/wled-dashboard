@@ -34,7 +34,7 @@ db.serialize(() => {
     CREATE TABLE IF NOT EXISTS preset_instances (
       preset_id INTEGER NOT NULL,
       instance_id INTEGER NOT NULL,
-      preset_value TEXT NOT NULL,
+      instance_preset INTEGER NOT NULL,
       PRIMARY KEY (preset_id, instance_id),
       FOREIGN KEY (preset_id) REFERENCES presets(id) ON DELETE CASCADE,
       FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE

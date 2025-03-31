@@ -15,5 +15,6 @@ router.get('/presets/:id', presetsController.getPresetDetails);
 router.post('/presets', presetsController.createPreset);
 router.put('/presets/:id', presetsController.updatePreset);
 router.delete('/presets/:id', presetsController.deletePreset);
+router.post('/presets/:id/apply', presetsController.applyPreset);
 
 module.exports = router;

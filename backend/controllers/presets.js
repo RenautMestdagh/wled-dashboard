@@ -1,18 +1,55 @@
 const db = require('../config/database');
 
+// Helper function to get preset details - outside the exported object
+const getPresetDetailsHelper = async (id) => {
+    const preset = await new Promise((resolve, reject) => {
+        db.get(`
+          SELECT 
+            p.*,
+            json_group_array(
+              json_object(
+                'instance_id', pi.instance_id,
+                'instance_name', i.name,
+                'instance_ip', i.ip,
+                'instance_preset', pi.instance_preset
+              )
+            ) as instances
+          FROM presets p
+          LEFT JOIN preset_instances pi ON p.id = pi.preset_id
+          LEFT JOIN instances i ON pi.instance_id = i.id
+          WHERE p.id = ?
+          GROUP BY p.id
+        `, [id], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+
+    if (!preset) {
+        return null;
+    }
+
+    return {
+        id: preset.id,
+        name: preset.name,
+        created_at: preset.created_at,
+        instances: preset.instances ? JSON.parse(preset.instances) : []
+    };
+};
+
 module.exports = {
     getAllPresets: async (req, res) => {
         try {
             const presets = await new Promise((resolve, reject) => {
                 db.all(`
-          SELECT 
-            p.id, 
-            p.name, 
-            p.created_at,
-            (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
-          FROM presets p
-          ORDER BY p.name
-        `, [], (err, rows) => {
+                    SELECT
+                        p.id,
+                        p.name,
+                        p.created_at,
+                        (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
+                    FROM presets p
+                    ORDER BY p.name
+                `, [], (err, rows) => {
                     if (err) reject(err);
                     else resolve(rows);
                 });
@@ -27,40 +64,11 @@ module.exports = {
     getPresetDetails: async (req, res) => {
         try {
             const { id } = req.params;
+            const result = await getPresetDetailsHelper(id);
 
-            const preset = await new Promise((resolve, reject) => {
-                db.get(`
-          SELECT 
-            p.*,
-            json_group_array(
-              json_object(
-                'instance_id', pi.instance_id,
-                'instance_name', i.name,
-                'instance_ip', i.ip,
-                'preset_value', pi.preset_value
-              )
-            ) as instances
-          FROM presets p
-          LEFT JOIN preset_instances pi ON p.id = pi.preset_id
-          LEFT JOIN instances i ON pi.instance_id = i.id
-          WHERE p.id = ?
-          GROUP BY p.id
-        `, [id], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
-
-            if (!preset) {
+            if (!result) {
                 return res.status(404).json({ error: 'Preset not found' });
             }
-
-            const result = {
-                id: preset.id,
-                name: preset.name,
-                created_at: preset.created_at,
-                instances: preset.instances ? JSON.parse(preset.instances) : []
-            };
 
             res.json(result);
         } catch (error) {
@@ -103,13 +111,13 @@ module.exports = {
                     instances.map(instance => (
                         new Promise((resolve, reject) => {
                             db.run(
-                                `INSERT INTO preset_instances 
-                (preset_id, instance_id, preset_value) 
-                VALUES (?, ?, ?)`,
+                                `INSERT INTO preset_instances
+                                     (preset_id, instance_id, instance_preset)
+                                 VALUES (?, ?, ?)`,
                                 [
                                     presetId,
                                     instance.instance_id,
-                                    JSON.stringify(instance.preset_value || {})
+                                    JSON.stringify(instance.instance_preset || {})
                                 ],
                                 (err) => {
                                     if (err) reject(err);
@@ -130,10 +138,7 @@ module.exports = {
             });
 
             // Return the created preset
-            const newPreset = await this.getPresetDetails(
-                { params: { id: presetId } },
-                { json: (data) => data }
-            );
+            const newPreset = await getPresetDetailsHelper(presetId);
 
             res.status(201).json(newPreset);
         } catch (error) {
@@ -143,7 +148,7 @@ module.exports = {
             });
 
             console.error('Failed to create preset:', error);
-            if (error.message.includes('UNIQUE constraint failed')) {
+            if (error.message && error.message.includes('UNIQUE constraint failed')) {
                 res.status(409).json({ error: 'Preset with this name already exists' });
             } else {
                 res.status(500).json({ error: 'Failed to create preset' });
@@ -199,13 +204,13 @@ module.exports = {
                         instances.map(instance => (
                             new Promise((resolve, reject) => {
                                 db.run(
-                                    `INSERT INTO preset_instances 
-                  (preset_id, instance_id, preset_value) 
-                  VALUES (?, ?, ?)`,
+                                    `INSERT INTO preset_instances
+                                         (preset_id, instance_id, instance_preset)
+                                     VALUES (?, ?, ?)`,
                                     [
                                         id,
                                         instance.instance_id,
-                                        JSON.stringify(instance.preset_value || {})
+                                        JSON.stringify(instance.instance_preset || {})
                                     ],
                                     (err) => {
                                         if (err) reject(err);
@@ -227,10 +232,7 @@ module.exports = {
             });
 
             // Return the updated preset
-            const updatedPreset = await this.getPresetDetails(
-                { params: { id } },
-                { json: (data) => data }
-            );
+            const updatedPreset = await getPresetDetailsHelper(id);
 
             res.json(updatedPreset);
         } catch (error) {
@@ -242,7 +244,7 @@ module.exports = {
             console.error(`Failed to update preset ${req.params.id}:`, error);
             if (error.message === 'Preset not found') {
                 res.status(404).json({ error: error.message });
-            } else if (error.message.includes('UNIQUE constraint failed')) {
+            } else if (error.message && error.message.includes('UNIQUE constraint failed')) {
                 res.status(409).json({ error: 'Preset with this name already exists' });
             } else {
                 res.status(500).json({ error: 'Failed to update preset' });
@@ -298,27 +300,49 @@ module.exports = {
             const { id } = req.params;
 
             // Get preset details
-            const preset = await this.getPresetDetails(
-                { params: { id } },
-                { json: (data) => data }
-            );
+            const preset = await getPresetDetailsHelper(id);
 
             if (!preset) {
                 return res.status(404).json({ error: 'Preset not found' });
             }
 
-            // Apply to each instance (you'll need to implement this part)
-            // const wledService = require('../services/wled');
-            // const results = await Promise.all(
-            //   preset.instances.map(instance => (
-            //     wledService.sendCommand(instance.instance_id, instance.preset_value)
-            //   )
-            // );
+            // Apply to each instance using the wledController
+            const wledController = require('./wled');
+            const results = await Promise.all(
+                preset.instances.map(async instance => {
+                    try {
+                        // Check if instance_preset is a number or an object
+                        const stateToApply = typeof instance.instance_preset === 'number' ?
+                            { ps: instance.instance_preset } :
+                            instance.instance_preset;
+
+                        // Call setState with the appropriate body
+                        const result = await wledController.setState(
+                            { params: { instanceId: instance.instance_id }, body: stateToApply },
+                            { json: (data) => data, status: () => ({ json: (data) => data }) }
+                        );
+
+                        return {
+                            instance_id: instance.instance_id,
+                            instance_name: instance.instance_name,
+                            success: true,
+                            result
+                        };
+                    } catch (error) {
+                        return {
+                            instance_id: instance.instance_id,
+                            instance_name: instance.instance_name,
+                            success: false,
+                            error: error.message
+                        };
+                    }
+                })
+            );
 
             res.json({
                 success: true,
                 message: `Preset "${preset.name}" applied to ${preset.instances.length} instances`,
-                // results
+                results
             });
         } catch (error) {
             console.error(`Failed to apply preset ${req.params.id}:`, error);
