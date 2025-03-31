@@ -1,29 +1,44 @@
-// Install dependencies: npm install express sqlite3 cors dotenv
-
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-const db = require("./db");
-require("dotenv").config();
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const {authenticate} = require("./middlewares/auth");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// Security Middlewares
+app.use(helmet());
+app.use(cors({
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || '*'
+}));
 app.use(express.json());
 
-// Serve frontend from ../frontend/dist
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
+// Rate Limiting
+app.use(rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per window
+}));
 
-// API Routes
-const routes = require("./routes");
-app.use("/api", routes);
+// All routes require authentication
+app.use(authenticate);
 
-// Catch-all route to serve frontend
-app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../frontend/dist", "index.html"));
+// Routes
+app.use('/api', require('./routes/api'));
+app.use('/wled', require('./routes/wled'));
+
+// Health Check
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'healthy' });
 });
 
+// Error Handling
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Internal Server Error' });
+});
+
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+    console.log(`Server running on port ${PORT}`);
 });
