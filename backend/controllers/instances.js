@@ -139,10 +139,32 @@ module.exports = {
     deleteInstance: (req, res) => {
         const { id } = req.params;
 
+        // First delete the instance (this will cascade to preset_instances)
         db.run("DELETE FROM instances WHERE id = ?", [id], function(err) {
             if (err) return res.status(500).json({ error: err.message });
             if (this.changes === 0) return res.status(404).json({ error: "Instance not found" });
-            res.json({ success: true });
+
+            // Now check for and delete any orphaned presets
+            db.run(`
+            DELETE FROM presets 
+            WHERE id IN (
+                SELECT p.id 
+                FROM presets p
+                LEFT JOIN preset_instances pi ON p.id = pi.preset_id
+                WHERE pi.preset_id IS NULL
+            )
+        `, function(err) {
+                if (err) {
+                    console.error("Error cleaning up orphaned presets:", err);
+                    // Don't fail the request - we successfully deleted the instance
+                }
+
+                if (this.changes > 0) {
+                    console.log(`Cleaned up ${this.changes} orphaned presets`);
+                }
+
+                res.json({ success: true });
+            });
         });
     }
 };

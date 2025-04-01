@@ -2,8 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const {authenticate} = require("./middlewares/auth");
+const {authenticate, rateLimitUnlessAuthenticated} = require("./middlewares/auth");
 
 const app = express();
 
@@ -14,11 +13,8 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Rate Limiting
-app.use(rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per window
-}));
+// Apply conditional rate limiting
+app.use(rateLimitUnlessAuthenticated);
 
 // All routes require authentication
 app.use(authenticate);
