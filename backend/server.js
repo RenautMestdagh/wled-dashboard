@@ -8,17 +8,31 @@ const path = require('path');
 const app = express();
 
 // Security Middlewares
-app.use(helmet());
-app.use(cors({
-    origin: /*process.env.ALLOWED_ORIGINS?.split(',') ||*/ '*'
-}));
+app.use(
+    helmet({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "'unsafe-inline'", "https://www.gstatic.com", "'unsafe-eval'"],
+                styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+                fontSrc: ["'self'", "https://fonts.gstatic.com"],
+                connectSrc: ["'self'", "https://www.gstatic.com", "https://fonts.gstatic.com"],
+                imgSrc: ["'self'", "data:"],
+                objectSrc: ["'none'"],
+                baseUri: ["'self'"],
+                frameAncestors: ["'self'"],
+            },
+        },
+    })
+);
+
 app.use(express.json());
 
 // Apply conditional rate limiting
 app.use(rateLimitUnlessAuthenticated);
 
 // Serve Flutter web app before authentication
-app.use(express.static(path.join(__dirname, 'build/web')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Health Check
 app.get('/health', (req, res) => {
