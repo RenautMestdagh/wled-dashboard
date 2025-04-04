@@ -1,22 +1,23 @@
 const rateLimit = require("express-rate-limit");
 const API_KEYS = new Set(process.env.API_KEYS?.split(',') || []);
 
-module.exports = {
+// Initialize rate limiter once
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per window
+});
 
+module.exports = {
     // Custom rate limiting middleware that skips if API key is valid
-    rateLimitUnlessAuthenticated : (req, res, next) => {
+    rateLimitUnlessAuthenticated: (req, res, next) => {
         const apiKey = req.headers['x-api-key'] || req.query.apiKey;
 
-        // If valid API key is provided, skip rate limiting
         if (apiKey && API_KEYS.has(apiKey)) {
-            return next();
+            return next(); // Skip rate limiting if authenticated
         }
 
-        // Otherwise apply rate limiting
-        return rateLimit({
-            windowMs: 15 * 60 * 1000, // 15 minutes
-            max: 100 // limit each IP to 100 requests per window
-        })(req, res, next);
+        // Apply pre-initialized rate limiter
+        return limiter(req, res, next);
     },
 
     authenticate: (req, res, next) => {

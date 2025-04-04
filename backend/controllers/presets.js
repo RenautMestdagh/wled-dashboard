@@ -1,33 +1,59 @@
 const db = require('../config/database');
 
-// Helper function to get preset details - outside the exported object
-const getPresetDetailsHelper = async (id) => {
-    const preset = await new Promise((resolve, reject) => {
-        db.get(`
-          SELECT 
-            p.*,
-            json_group_array(
-              json_object(
-                'instance_id', pi.instance_id,
-                'instance_name', i.name,
-                'instance_ip', i.ip,
-                'instance_preset', pi.instance_preset
-              )
-            ) as instances
-          FROM presets p
-          LEFT JOIN preset_instances pi ON p.id = pi.preset_id
-          LEFT JOIN instances i ON pi.instance_id = i.id
-          WHERE p.id = ?
-          GROUP BY p.id
-        `, [id], (err, row) => {
+// Database operation helper functions
+const dbQuery = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+};
+
+const dbGet = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
             if (err) reject(err);
             else resolve(row);
         });
     });
+};
 
-    if (!preset) {
-        return null;
-    }
+const dbRun = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function(err) {
+            if (err) reject(err);
+            else resolve(this);
+        });
+    });
+};
+
+// Transaction helper functions
+const beginTransaction = () => dbRun('BEGIN TRANSACTION');
+const commitTransaction = () => dbRun('COMMIT');
+const rollbackTransaction = () => dbRun('ROLLBACK').catch(() => {});
+
+// Helper function to get preset details
+const getPresetDetails = async (id) => {
+    const preset = await dbGet(`
+    SELECT 
+      p.*,
+      json_group_array(
+        json_object(
+          'instance_id', pi.instance_id,
+          'instance_name', i.name,
+          'instance_ip', i.ip,
+          'instance_preset', pi.instance_preset
+        )
+      ) as instances
+    FROM presets p
+    LEFT JOIN preset_instances pi ON p.id = pi.preset_id
+    LEFT JOIN instances i ON pi.instance_id = i.id
+    WHERE p.id = ?
+    GROUP BY p.id
+  `, [id]);
+
+    if (!preset) return null;
 
     return {
         id: preset.id,
@@ -37,23 +63,37 @@ const getPresetDetailsHelper = async (id) => {
     };
 };
 
+// Helper to handle preset instance associations
+const associateInstances = async (presetId, instances) => {
+    if (!instances || instances.length === 0) return;
+
+    const insertPromises = instances.map(instance =>
+        dbRun(
+            `INSERT INTO preset_instances (preset_id, instance_id, instance_preset) VALUES (?, ?, ?)`,
+            [
+                presetId,
+                instance.instance_id,
+                JSON.stringify(instance.instance_preset || {})
+            ]
+        )
+    );
+
+    await Promise.all(insertPromises);
+};
+
 module.exports = {
     getAllPresets: async (req, res) => {
         try {
-            const presets = await new Promise((resolve, reject) => {
-                db.all(`
-                    SELECT
-                        p.id,
-                        p.name,
-                        p.created_at,
-                        (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
-                    FROM presets p
-                    ORDER BY p.name
-                `, [], (err, rows) => {
-                    if (err) reject(err);
-                    else resolve(rows);
-                });
-            });
+            const presets = await dbQuery(`
+        SELECT
+          p.id,
+          p.name,
+          p.created_at,
+          (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
+        FROM presets p
+        ORDER BY p.name
+      `);
+
             res.json(presets);
         } catch (error) {
             console.error('Failed to get presets:', error);
@@ -64,7 +104,7 @@ module.exports = {
     getPresetDetails: async (req, res) => {
         try {
             const { id } = req.params;
-            const result = await getPresetDetailsHelper(id);
+            const result = await getPresetDetails(id);
 
             if (!result) {
                 return res.status(404).json({ error: 'Preset not found' });
@@ -85,69 +125,24 @@ module.exports = {
                 return res.status(400).json({ error: 'Valid preset name is required' });
             }
 
-            // Start transaction
-            await new Promise((resolve, reject) => {
-                db.run('BEGIN TRANSACTION', [], (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                });
-            });
+            await beginTransaction();
 
             // Insert preset
-            const { lastID: presetId } = await new Promise((resolve, reject) => {
-                db.run(
-                    'INSERT INTO presets (name) VALUES (?)',
-                    [name.trim()],
-                    function(err) {
-                        if (err) reject(err);
-                        else resolve(this);
-                    }
-                );
-            });
+            const result = await dbRun('INSERT INTO presets (name) VALUES (?)', [name.trim()]);
+            const presetId = result.lastID;
 
-            // Insert associated instances if provided
-            if (instances && instances.length > 0) {
-                await Promise.all(
-                    instances.map(instance => (
-                        new Promise((resolve, reject) => {
-                            db.run(
-                                `INSERT INTO preset_instances
-                                     (preset_id, instance_id, instance_preset)
-                                 VALUES (?, ?, ?)`,
-                                [
-                                    presetId,
-                                    instance.instance_id,
-                                    JSON.stringify(instance.instance_preset || {})
-                                ],
-                                (err) => {
-                                    if (err) reject(err);
-                                    else resolve();
-                                }
-                            );
-                        })
-                    ))
-                );
-            }
+            // Associate instances
+            await associateInstances(presetId, instances);
 
-            // Commit transaction
-            await new Promise((resolve, reject) => {
-                db.run('COMMIT', [], (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                });
-            });
+            await commitTransaction();
 
             // Return the created preset
-            const newPreset = await getPresetDetailsHelper(presetId);
-
+            const newPreset = await getPresetDetails(presetId);
             res.status(201).json(newPreset);
         } catch (error) {
-            // Rollback on error
-            await new Promise((resolve) => {
-                db.run('ROLLBACK', [], () => resolve());
-            });
-
+            await rollbackTransaction();
             console.error('Failed to create preset:', error);
+
             if (error.message && error.message.includes('UNIQUE constraint failed')) {
                 res.status(409).json({ error: 'Preset with this name already exists' });
             } else {
@@ -161,87 +156,38 @@ module.exports = {
             const { id } = req.params;
             const { name, instances } = req.body;
 
-            // Start transaction
-            await new Promise((resolve, reject) => {
-                db.run('BEGIN TRANSACTION', [], (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                });
-            });
+            await beginTransaction();
 
             // Update preset name if provided
             if (name) {
-                await new Promise((resolve, reject) => {
-                    db.run(
-                        'UPDATE presets SET name = ? WHERE id = ?',
-                        [name.trim(), id],
-                        function(err) {
-                            if (err) reject(err);
-                            else if (this.changes === 0) reject(new Error('Preset not found'));
-                            else resolve();
-                        }
-                    );
-                });
-            }
+                const result = await dbRun(
+                    'UPDATE presets SET name = ? WHERE id = ?',
+                    [name.trim(), id]
+                );
 
-            // Update instances if provided
-            if (instances) {
-                // First delete existing instances
-                await new Promise((resolve, reject) => {
-                    db.run(
-                        'DELETE FROM preset_instances WHERE preset_id = ?',
-                        [id],
-                        (err) => {
-                            if (err) reject(err);
-                            else resolve();
-                        }
-                    );
-                });
-
-                // Then insert new instances
-                if (instances.length > 0) {
-                    await Promise.all(
-                        instances.map(instance => (
-                            new Promise((resolve, reject) => {
-                                db.run(
-                                    `INSERT INTO preset_instances
-                                         (preset_id, instance_id, instance_preset)
-                                     VALUES (?, ?, ?)`,
-                                    [
-                                        id,
-                                        instance.instance_id,
-                                        JSON.stringify(instance.instance_preset || {})
-                                    ],
-                                    (err) => {
-                                        if (err) reject(err);
-                                        else resolve();
-                                    }
-                                );
-                            })
-                        ))
-                    );
+                if (result.changes === 0) {
+                    throw new Error('Preset not found');
                 }
             }
 
-            // Commit transaction
-            await new Promise((resolve, reject) => {
-                db.run('COMMIT', [], (err) => {
-                    if (err) reject(err);
-                    else resolve();
-                });
-            });
+            // Update instances if provided
+            if (instances !== undefined) {
+                // Delete existing instances
+                await dbRun('DELETE FROM preset_instances WHERE preset_id = ?', [id]);
+
+                // Add new instances
+                await associateInstances(id, instances);
+            }
+
+            await commitTransaction();
 
             // Return the updated preset
-            const updatedPreset = await getPresetDetailsHelper(id);
-
+            const updatedPreset = await getPresetDetails(id);
             res.json(updatedPreset);
         } catch (error) {
-            // Rollback on error
-            await new Promise((resolve) => {
-                db.run('ROLLBACK', [], () => resolve());
-            });
-
+            await rollbackTransaction();
             console.error(`Failed to update preset ${req.params.id}:`, error);
+
             if (error.message === 'Preset not found') {
                 res.status(404).json({ error: error.message });
             } else if (error.message && error.message.includes('UNIQUE constraint failed')) {
@@ -256,35 +202,17 @@ module.exports = {
         try {
             const { id } = req.params;
 
-            // First check if preset exists
-            const presetExists = await new Promise((resolve, reject) => {
-                db.get(
-                    'SELECT 1 FROM presets WHERE id = ?',
-                    [id],
-                    (err, row) => {
-                        if (err) reject(err);
-                        else resolve(!!row);
-                    }
-                );
-            });
+            // Check if preset exists
+            const presetExists = await dbGet('SELECT 1 FROM presets WHERE id = ?', [id]);
 
             if (!presetExists) {
                 return res.status(404).json({ error: 'Preset not found' });
             }
 
-            // Delete preset (preset_instances will be deleted automatically due to ON DELETE CASCADE)
-            const { changes } = await new Promise((resolve, reject) => {
-                db.run(
-                    'DELETE FROM presets WHERE id = ?',
-                    [id],
-                    function(err) {
-                        if (err) reject(err);
-                        else resolve(this);
-                    }
-                );
-            });
+            // Delete preset (preset_instances will be deleted due to CASCADE)
+            const result = await dbRun('DELETE FROM presets WHERE id = ?', [id]);
 
-            if (changes === 0) {
+            if (result.changes === 0) {
                 return res.status(404).json({ error: 'Preset not found' });
             }
 
@@ -300,7 +228,7 @@ module.exports = {
             const { id } = req.params;
 
             // Get preset details
-            const preset = await getPresetDetailsHelper(id);
+            const preset = await getPresetDetails(id);
 
             if (!preset) {
                 return res.status(404).json({ error: 'Preset not found' });
@@ -312,9 +240,9 @@ module.exports = {
                 preset.instances.map(async instance => {
                     try {
                         // Check if instance_preset is a number or an object
-                        const stateToApply = typeof instance.instance_preset === 'number' ?
-                            { ps: instance.instance_preset } :
-                            JSON.parse(instance.instance_preset);
+                        const stateToApply = typeof instance.instance_preset === 'number'
+                            ? { ps: instance.instance_preset }
+                            : JSON.parse(instance.instance_preset);
 
                         // Call setState with the appropriate body
                         const result = await wledController.setState(

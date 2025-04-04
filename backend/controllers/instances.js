@@ -1,38 +1,94 @@
 const db = require('../config/database');
-const {get} = require("axios");
-const {getInstanceInfo} = require("../services/wled");
+const { get } = require("axios");
+const { getInstanceInfo } = require("../services/wled");
+
+// Helper functions to reduce duplication
+const dbQuery = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+        db.all(sql, params, (err, rows) => {
+            if (err) reject(err);
+            else resolve(rows);
+        });
+    });
+};
+
+const dbGet = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+        db.get(sql, params, (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+};
+
+const dbRun = (sql, params = []) => {
+    return new Promise((resolve, reject) => {
+        db.run(sql, params, function(err) {
+            if (err) reject(err);
+            else resolve(this);
+        });
+    });
+};
+
+// Validation helpers
+const validateIP = (ip) => {
+    if (!ip) return { valid: false, message: "IP address is required" };
+    const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+    return ipRegex.test(ip)
+        ? { valid: true }
+        : { valid: false, message: "Invalid IP address format" };
+};
+
+const checkWLEDConnection = async (ip) => {
+    try {
+        const infoUrl = `http://${ip}/json/info`;
+        const response = await get(infoUrl, { timeout: 3000 });
+
+        if (!response.data || !response.data.ver) {
+            return { success: false, status: 400, message: "The device doesn't appear to be a WLED controller" };
+        }
+
+        return { success: true, data: response.data };
+    } catch (error) {
+        if (error.code === 'ECONNABORTED') {
+            return { success: false, status: 408, message: "Connection to WLED device timed out" };
+        } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+            return { success: false, status: 400, message: "Could not connect to WLED device at this IP" };
+        } else {
+            return { success: false, status: 500, message: error.message };
+        }
+    }
+};
+
+// Enhanced instance processing
+const processInstanceWithInfo = async (instance, fetchInfo = true) => {
+    if (!fetchInfo) return instance;
+
+    try {
+        const info = await getInstanceInfo(instance.id);
+
+        // Add RGB support information
+        instance.supportsRGB = [1, 3, 7].includes(info?.leds?.lc);
+
+        // Use device name if local name is empty
+        if ((!instance.name || instance.name.trim() === '') && info?.name) {
+            instance.name = info.name.trim();
+        }
+
+        return instance;
+    } catch (error) {
+        console.error(`Failed to fetch info for instance ${instance.id}:`, error);
+        instance.supportsRGB = false;
+        return instance;
+    }
+};
 
 module.exports = {
     getAllInstances: async (req, res) => {
         try {
-            // First get all instances from the database
-            const instances = await new Promise((resolve, reject) => {
-                db.all("SELECT * FROM instances ORDER BY name", [], (err, rows) => {
-                    if (err) reject(err);
-                    else resolve(rows);
-                });
-            });
-
-            // Process each instance to check for empty names
+            const instances = await dbQuery("SELECT * FROM instances ORDER BY name");
             const processedInstances = await Promise.all(
-                instances.map(async (instance) => {
-                    // If name is not empty, return as-is
-                    if (instance.name && instance.name.trim() !== '') {
-                        return instance;
-                    }
-
-                    try {
-                        const info = await getInstanceInfo(instance.id);
-                        if (info && info.name) {
-                            // Return the instance with updated name (only in response)
-                            return { ...instance, name: info.name.trim() };
-                        }
-                    } catch (error) {
-                        console.error(`Failed to fetch info for instance ${instance.id}:`, error);
-                    }
-
-                    return instance;
-                })
+                instances.map(instance => processInstanceWithInfo(instance))
             );
 
             res.json(processedInstances);
@@ -45,71 +101,37 @@ module.exports = {
     createInstance: async (req, res) => {
         const { ip, name } = req.body;
 
-        // Validate input
-        if (!ip) return res.status(400).json({ error: "IP address is required" });
-
-        // Validate IP format (basic check)
-        const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
-        if (!ipRegex.test(ip)) {
-            return res.status(400).json({ error: "Invalid IP address format" });
+        // Validate IP
+        const ipValidation = validateIP(ip);
+        if (!ipValidation.valid) {
+            return res.status(400).json({ error: ipValidation.message });
         }
 
         try {
-            // 1. First verify the WLED instance is reachable
-            const infoUrl = `http://${ip}/json/info`;
-            const response = await get(infoUrl, {
-                timeout: 3000 // 3 second timeout
-            });
-
-            // 2. Check if it's actually a WLED device
-            if (!response.data || !response.data.ver) {
-                return res.status(400).json({ error: "The device doesn't appear to be a WLED controller" });
+            // Check if we can connect to the WLED device
+            const connectionCheck = await checkWLEDConnection(ip);
+            if (!connectionCheck.success) {
+                return res.status(connectionCheck.status).json({ error: connectionCheck.message });
             }
 
-            // 3. Check for duplicate IP in database
-            const existingInstance = await new Promise((resolve, reject) => {
-                db.get("SELECT id FROM instances WHERE ip = ?", [ip], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
-
+            // Check for duplicate IP
+            const existingInstance = await dbGet("SELECT id FROM instances WHERE ip = ?", [ip]);
             if (existingInstance) {
                 return res.status(409).json({ error: "A WLED instance with this IP already exists" });
             }
 
-            // 4. Create the instance record
-            const result = await new Promise((resolve, reject) => {
-                db.run(
-                    "INSERT INTO instances (ip, name) VALUES (?, ?)",
-                    [
-                        ip,
-                        name
-                    ],
-                    function(err) {
-                        if (err) reject(err);
-                        else resolve(this);
-                    }
-                );
-            });
+            // Create instance
+            const result = await dbRun("INSERT INTO instances (ip, name) VALUES (?, ?)", [ip, name]);
 
-            // 5. Return the created instance
-            const newInstance = await new Promise((resolve, reject) => {
-                db.get("SELECT * FROM instances WHERE id = ?", [result.lastID], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
+            // Get the newly created instance
+            const newInstance = await dbGet("SELECT * FROM instances WHERE id = ?", [result.lastID]);
+            newInstance.supportsRGB = [1, 3, 7].includes(connectionCheck.data.leds.lc);
 
             res.status(201).json(newInstance);
         } catch (error) {
             console.error("Failed to create instance:", error);
 
-            if (error.code === 'ECONNABORTED') {
-                res.status(408).json({ error: "Connection to WLED device timed out" });
-            } else if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
-                res.status(400).json({ error: "Could not connect to WLED device at this IP" });
-            } else if (error.message.includes('SQLITE_CONSTRAINT')) {
+            if (error.message.includes('SQLITE_CONSTRAINT')) {
                 res.status(409).json({ error: "A WLED instance with this IP already exists" });
             } else {
                 res.status(500).json({ error: "Failed to create WLED instance", details: error.message });
@@ -117,54 +139,85 @@ module.exports = {
         }
     },
 
-    updateInstance: (req, res) => {
+    updateInstance: async (req, res) => {
         const { id } = req.params;
-        const { ip, name } = req.body;
+        const { ip, name, skipFetch } = req.body;
 
-        db.run(
-            "UPDATE instances SET ip = COALESCE(?, ip), name = COALESCE(?, name) WHERE id = ?",
-            [ip, name, id],
-            function(err) {
-                if (err) return res.status(500).json({ error: err.message });
-                if (this.changes === 0) return res.status(404).json({ error: "Instance not found" });
+        try {
+            // Only validate and check connection if IP is provided
+            if (ip) {
+                // Validate IP format
+                const ipValidation = validateIP(ip);
+                if (!ipValidation.valid) {
+                    return res.status(400).json({ error: ipValidation.message });
+                }
 
-                db.get("SELECT * FROM instances WHERE id = ?", [id], (err, row) => {
-                    if (err) return res.status(500).json({ error: err.message });
-                    res.json(row);
-                });
+                // Check for duplicate IP
+                const existingInstance = await dbGet(
+                    "SELECT id FROM instances WHERE ip = ? AND id != ?",
+                    [ip, id]
+                );
+
+                if (existingInstance) {
+                    return res.status(409).json({ error: "A WLED instance with this IP already exists" });
+                }
+
+                // Check if we can connect to the WLED device
+                const connectionCheck = await checkWLEDConnection(ip);
+                if (!connectionCheck.success) {
+                    return res.status(connectionCheck.status).json({ error: connectionCheck.message });
+                }
             }
-        );
+
+            // Update instance
+            const result = await dbRun(
+                "UPDATE instances SET ip = COALESCE(?, ip), name = COALESCE(?, name) WHERE id = ?",
+                [ip, name, id]
+            );
+
+            if (result.changes === 0) {
+                return res.status(404).json({ error: "Instance not found" });
+            }
+
+            // Get updated instance
+            let instance = await dbGet("SELECT * FROM instances WHERE id = ?", [id]);
+
+            // Process instance with updated info if needed
+            instance = await processInstanceWithInfo(instance, !skipFetch);
+
+            res.json(instance);
+        } catch (error) {
+            console.error('Failed to update instance:', error);
+            res.status(500).json({ error: error.message });
+        }
     },
 
-    deleteInstance: (req, res) => {
+    deleteInstance: async (req, res) => {
         const { id } = req.params;
 
-        // First delete the instance (this will cascade to preset_instances)
-        db.run("DELETE FROM instances WHERE id = ?", [id], function(err) {
-            if (err) return res.status(500).json({ error: err.message });
-            if (this.changes === 0) return res.status(404).json({ error: "Instance not found" });
+        try {
+            // Delete the instance
+            const result = await dbRun("DELETE FROM instances WHERE id = ?", [id]);
 
-            // Now check for and delete any orphaned presets
-            db.run(`
-            DELETE FROM presets 
-            WHERE id IN (
-                SELECT p.id 
-                FROM presets p
-                LEFT JOIN preset_instances pi ON p.id = pi.preset_id
-                WHERE pi.preset_id IS NULL
-            )
-        `, function(err) {
-                if (err) {
-                    console.error("Error cleaning up orphaned presets:", err);
-                    // Don't fail the request - we successfully deleted the instance
-                }
+            if (result.changes === 0) {
+                return res.status(404).json({ error: "Instance not found" });
+            }
 
-                if (this.changes > 0) {
-                    console.log(`Cleaned up ${this.changes} orphaned presets`);
-                }
+            // Clean up orphaned presets
+            await dbRun(`
+        DELETE FROM presets 
+        WHERE id IN (
+          SELECT p.id 
+          FROM presets p
+          LEFT JOIN preset_instances pi ON p.id = pi.preset_id
+          WHERE pi.preset_id IS NULL
+        )
+      `);
 
-                res.json({ success: true });
-            });
-        });
+            res.json({ success: true });
+        } catch (error) {
+            console.error('Failed to delete instance:', error);
+            res.status(500).json({ error: error.message });
+        }
     }
 };

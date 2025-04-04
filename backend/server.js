@@ -16,17 +16,17 @@ app.use(express.json());
 // Apply conditional rate limiting
 app.use(rateLimitUnlessAuthenticated);
 
+// Health Check
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'healthy' });
+});
+
 // All routes require authentication
 app.use(authenticate);
 
 // Routes
 app.use('/api', require('./routes/api'));
 app.use('/wled', require('./routes/wled'));
-
-// Health Check
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'healthy' });
-});
 
 // Error Handling
 app.use((err, req, res, next) => {
