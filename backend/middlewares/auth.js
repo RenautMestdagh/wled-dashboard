@@ -4,7 +4,7 @@ const API_KEYS = new Set(process.env.API_KEYS?.split(',') || []);
 // Initialize rate limiter once
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100 // limit each IP to 100 requests per window
+    max: 500 // limit each IP to 100 requests per window
 });
 
 module.exports = {

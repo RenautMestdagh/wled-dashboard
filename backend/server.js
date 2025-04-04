@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const {authenticate, rateLimitUnlessAuthenticated} = require("./middlewares/auth");
+const path = require('path');
 
 const app = express();
 
@@ -15,6 +16,9 @@ app.use(express.json());
 
 // Apply conditional rate limiting
 app.use(rateLimitUnlessAuthenticated);
+
+// Serve Flutter web app before authentication
+app.use(express.static(path.join(__dirname, 'build/web')));
 
 // Health Check
 app.get('/health', (req, res) => {
