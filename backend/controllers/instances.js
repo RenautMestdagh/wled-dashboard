@@ -60,38 +60,13 @@ const checkWLEDConnection = async (ip) => {
     }
 };
 
-// Enhanced instance processing
-const processInstanceWithInfo = async (instance, fetchInfo = true) => {
-    if (!fetchInfo) return instance;
-
-    try {
-        const info = await getInstanceInfo(instance.id);
-
-        // Add RGB support information
-        instance.supportsRGB = [1, 3, 7].includes(info?.leds?.lc);
-
-        // Use device name if local name is empty
-        if ((!instance.name || instance.name.trim() === '') && info?.name) {
-            instance.name = info.name.trim();
-        }
-
-        return instance;
-    } catch (error) {
-        console.error(`Failed to fetch info for instance ${instance.id}:`, error);
-        instance.supportsRGB = false;
-        return instance;
-    }
-};
 
 module.exports = {
     getAllInstances: async (req, res) => {
         try {
             const instances = await dbQuery("SELECT * FROM instances ORDER BY name");
-            const processedInstances = await Promise.all(
-                instances.map(instance => processInstanceWithInfo(instance))
-            );
 
-            res.json(processedInstances);
+            res.json(instances);
         } catch (error) {
             console.error('Failed to get instances:', error);
             res.status(500).json({ error: error.message });
@@ -141,7 +116,7 @@ module.exports = {
 
     updateInstance: async (req, res) => {
         const { id } = req.params;
-        const { ip, name, skipFetch } = req.body;
+        const { ip, name } = req.body;
 
         try {
             // Only validate and check connection if IP is provided
@@ -181,9 +156,6 @@ module.exports = {
 
             // Get updated instance
             let instance = await dbGet("SELECT * FROM instances WHERE id = ?", [id]);
-
-            // Process instance with updated info if needed
-            instance = await processInstanceWithInfo(instance, !skipFetch);
 
             res.json(instance);
         } catch (error) {

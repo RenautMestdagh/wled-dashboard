@@ -1,4 +1,5 @@
 require('dotenv').config();
+const morgan = require('morgan');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -6,6 +7,27 @@ const {authenticate, rateLimitUnlessAuthenticated} = require("./middlewares/auth
 const path = require('path');
 
 const app = express();
+
+app.use(morgan('dev'));
+
+const corsOptions = {
+    origin: 'https://leds..duckdns.org', // Allow only this origin
+    methods: 'GET,POST,PUT,DELETE', // Allow specific methods if needed
+    allowedHeaders: 'Content-Type,X-API-Key,Authorization',  // Allow necessary headers
+    credentials: true, // If you want to allow cookies and authentication headers
+};
+const corsOptionsDev = {
+    origin: '*', // Allow all origins
+    methods: 'GET,POST,PUT,DELETE',
+    allowedHeaders: 'Content-Type,X-API-Key,Authorization',  // Allow necessary headers
+    credentials: true,
+};
+
+if (process.env.NODE_ENV === 'production')
+    app.use(cors(corsOptions));
+else
+    app.use(cors(corsOptionsDev));
+
 
 // Security Middlewares
 app.use(
