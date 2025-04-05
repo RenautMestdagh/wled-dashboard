@@ -9,7 +9,7 @@ const resolveDBPath = () => {
     }
     return process.env.NODE_ENV === 'production'
         ? '/data/database.db'
-        : path.join(__dirname, '../data/wled-control.db');
+        : path.join(__dirname, '../data/database.db');
 };
 
 const DB_PATH = resolveDBPath();
