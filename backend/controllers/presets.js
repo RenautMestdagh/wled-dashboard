@@ -85,14 +85,15 @@ module.exports = {
     getAllPresets: async (req, res) => {
         try {
             const presets = await dbQuery(`
-        SELECT
-          p.id,
-          p.name,
-          p.created_at,
-          (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
-        FROM presets p
-        ORDER BY p.name
-      `);
+                SELECT
+                    p.id,
+                    p.name,
+                    p.created_at,
+                    p.display_order,
+                    (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
+                FROM presets p
+                ORDER BY p.display_order
+            `);
 
             res.json(presets);
         } catch (error) {
@@ -127,8 +128,14 @@ module.exports = {
 
             await beginTransaction();
 
+            const maxOrderResult = await dbGet("SELECT MAX(display_order) as maxOrder FROM presets");
+            const nextOrder = maxOrderResult.maxOrder !== null ? maxOrderResult.maxOrder + 1 : 0;
+
             // Insert preset
-            const result = await dbRun('INSERT INTO presets (name) VALUES (?)', [name.trim()]);
+            const result = await dbRun(
+                'INSERT INTO presets (name, display_order) VALUES (?, ?)',
+                [name.trim(), nextOrder]
+            );
             const presetId = result.lastID;
 
             // Associate instances
@@ -276,5 +283,44 @@ module.exports = {
             console.error(`Failed to apply preset ${req.params.id}:`, error);
             res.status(500).json({ error: 'Failed to apply preset' });
         }
-    }
+    },
+
+    reorderPresets: async (req, res) => {
+        const { orderedIds } = req.body;
+
+        // Validate input
+        if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+            return res.status(400).json({ error: "orderedIds must be a non-empty array of preset IDs" });
+        }
+
+        try {
+            await beginTransaction();
+
+            // Update the order for each ID in the array
+            for (let index = 0; index < orderedIds.length; index++) {
+                const id = orderedIds[index];
+                await dbRun("UPDATE presets SET display_order = ? WHERE id = ?", [index, id]);
+            }
+
+            await commitTransaction();
+
+            // Return the reordered presets
+            const presets = await dbQuery(`
+      SELECT
+        p.id,
+        p.name,
+        p.created_at,
+        p.display_order,
+        (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
+      FROM presets p
+      ORDER BY p.display_order
+    `);
+
+            res.json(presets);
+        } catch (error) {
+            await rollbackTransaction();
+            console.error('Failed to reorder presets:', error);
+            res.status(500).json({ error: error.message });
+        }
+    },
 };

@@ -64,8 +64,7 @@ const checkWLEDConnection = async (ip) => {
 module.exports = {
     getAllInstances: async (req, res) => {
         try {
-            const instances = await dbQuery("SELECT * FROM instances ORDER BY name");
-
+            const instances = await dbQuery("SELECT * FROM instances ORDER BY display_order");
             res.json(instances);
         } catch (error) {
             console.error('Failed to get instances:', error);
@@ -95,8 +94,14 @@ module.exports = {
                 return res.status(409).json({ error: "A WLED instance with this IP already exists" });
             }
 
+            const maxOrderResult = await dbGet("SELECT MAX(display_order) as maxOrder FROM instances");
+            const nextOrder = maxOrderResult.maxOrder !== null ? maxOrderResult.maxOrder + 1 : 0;
+
             // Create instance
-            const result = await dbRun("INSERT INTO instances (ip, name) VALUES (?, ?)", [ip, name]);
+            const result = await dbRun(
+                "INSERT INTO instances (ip, name, display_order) VALUES (?, ?, ?)",
+                [ip, name, nextOrder]
+            );
 
             // Get the newly created instance
             const newInstance = await dbGet("SELECT * FROM instances WHERE id = ?", [result.lastID]);
@@ -191,5 +196,34 @@ module.exports = {
             console.error('Failed to delete instance:', error);
             res.status(500).json({ error: error.message });
         }
-    }
+    },
+
+    reorderInstances: async (req, res) => {
+        const { orderedIds } = req.body;
+
+        // Validate input
+        if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+            return res.status(400).json({ error: "orderedIds must be a non-empty array of instance IDs" });
+        }
+
+        try {
+            await beginTransaction(); // Assuming you have this function or use the one from presets controller
+
+            // Update the order for each ID in the array
+            for (let index = 0; index < orderedIds.length; index++) {
+                const id = orderedIds[index];
+                await dbRun("UPDATE instances SET display_order = ? WHERE id = ?", [index, id]);
+            }
+
+            await commitTransaction(); // Assuming you have this function or use the one from presets controller
+
+            // Return the reordered instances
+            const instances = await dbQuery("SELECT * FROM instances ORDER BY display_order");
+            res.json(instances);
+        } catch (error) {
+            await rollbackTransaction(); // Assuming you have this function or use the one from presets controller
+            console.error('Failed to reorder instances:', error);
+            res.status(500).json({ error: error.message });
+        }
+    },
 };

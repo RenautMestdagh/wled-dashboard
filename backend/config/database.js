@@ -1,7 +1,27 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../data/database.db');
+// Resolve DB path based on environment
+const resolveDBPath = () => {
+    if (process.env.DB_PATH) {
+        return process.env.DB_PATH;
+    }
+    return process.env.NODE_ENV === 'production'
+        ? '/data/database.db'
+        : path.join(__dirname, '../data/wled-control.db');
+};
+
+const DB_PATH = resolveDBPath();
+const DB_DIR = path.dirname(DB_PATH);
+
+// Ensure directory exists
+if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, {
+        recursive: true,
+        mode: process.env.NODE_ENV === 'production' ? 0o750 : 0o777
+    });
+}
 
 const db = new sqlite3.Database(DB_PATH, (err) => {
     if (err) {
@@ -17,33 +37,38 @@ const db = new sqlite3.Database(DB_PATH, (err) => {
 
 // Initialize database schema
 db.serialize(() => {
+    // Create instances table with display_order
     db.run(`
-    CREATE TABLE IF NOT EXISTS instances (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      ip TEXT UNIQUE NOT NULL,
-      name TEXT,
-      last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+        CREATE TABLE IF NOT EXISTS instances (
+                                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                                 ip TEXT UNIQUE NOT NULL,
+                                                 name TEXT,
+                                                 display_order INTEGER DEFAULT 0,
+                                                 last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
 
+    // Create presets table with display_order
     db.run(`
-    CREATE TABLE IF NOT EXISTS presets (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL UNIQUE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `);
+        CREATE TABLE IF NOT EXISTS presets (
+                                               id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                               name TEXT NOT NULL UNIQUE,
+                                               display_order INTEGER DEFAULT 0,
+                                               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
 
+    // Create preset_instances join table
     db.run(`
-    CREATE TABLE IF NOT EXISTS preset_instances (
-      preset_id INTEGER NOT NULL,
-      instance_id INTEGER NOT NULL,
-      instance_preset INTEGER NOT NULL,
-      PRIMARY KEY (preset_id, instance_id),
-      FOREIGN KEY (preset_id) REFERENCES presets(id) ON DELETE CASCADE,
-      FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE
-    )
-  `);
+        CREATE TABLE IF NOT EXISTS preset_instances (
+                                                        preset_id INTEGER NOT NULL,
+                                                        instance_id INTEGER NOT NULL,
+                                                        instance_preset TEXT NOT NULL,
+                                                        PRIMARY KEY (preset_id, instance_id),
+            FOREIGN KEY (preset_id) REFERENCES presets(id) ON DELETE CASCADE,
+            FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE
+            )
+    `);
 });
 
 module.exports = db;
