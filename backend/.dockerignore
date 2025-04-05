@@ -1,0 +1,24 @@
+# Node modules
+node_modules/
+
+# Environment files
+.env
+
+# Logs and system
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+
+# Build/runtime artifacts (if added later)
+dist/
+coverage/
+
+# IDE/project files
+.idea/
+*.iml
+
+# Database files
+data/
+database.db
+*.db
