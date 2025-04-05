@@ -476,10 +476,16 @@ GET /wled/{instanceId}/info
 ## Environment Variables
 
 ```
-PORT=3000
-DB_PATH=./data/wled-control.db
-API_KEYS=your-secret-key,another-key
-NODE_ENV=development
+PORT=3000 # filled in by Docker
+NODE_ENV=production # filled in by Docker
+DB_PATH=/data/database.db # filled in by Docker
+
+# Security Configuration
+# Replace with your actual API keys, comma-separated if multiple
+API_KEYS=your-secure-api-key-123,backup-key-456
+
+# CORS Configuration
+ALLOWED_ORIGINS=mydomain.com
 ```
 
 ## Setup

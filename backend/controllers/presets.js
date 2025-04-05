@@ -247,8 +247,8 @@ module.exports = {
                 preset.instances.map(async instance => {
                     try {
                         // Check if instance_preset is a number or an object
-                        const stateToApply = typeof instance.instance_preset === 'number'
-                            ? { ps: instance.instance_preset }
+                        const stateToApply = !isNaN(instance.instance_preset)
+                            ? { ps: Number(instance.instance_preset) }
                             : JSON.parse(instance.instance_preset);
 
                         // Call setState with the appropriate body
