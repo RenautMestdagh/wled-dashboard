@@ -44,12 +44,6 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
             cd docker-compose
-
-            echo "Pulling latest Docker image..."
             sudo docker compose pull wled
-            
-            echo "Restarting wledcontainer..."
             sudo docker compose up -d wled
-            
-            echo "Cleaning up old images..."
             sudo docker image prune -f
