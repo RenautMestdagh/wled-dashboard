@@ -1,0 +1,21 @@
+# Build outputs
+build/
+
+# iOS/Android platform folders (optional if not needed in container)
+android/
+ios/
+
+# IDE files
+.idea/
+*.iml
+
+# Misc
+.DS_Store
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+.packages
+pubspec.lock
+
+# Environment/config (if applicable)
+.env

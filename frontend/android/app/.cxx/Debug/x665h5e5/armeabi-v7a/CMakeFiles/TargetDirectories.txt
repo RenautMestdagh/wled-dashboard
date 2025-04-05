@@ -1,0 +1,2 @@
+C:/Users/renau/WebstormProjects/wled-dashboard/frontend/android/app/.cxx/Debug/x665h5e5/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/renau/WebstormProjects/wled-dashboard/frontend/android/app/.cxx/Debug/x665h5e5/armeabi-v7a/CMakeFiles/rebuild_cache.dir

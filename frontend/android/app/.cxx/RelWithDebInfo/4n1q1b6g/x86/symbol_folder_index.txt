@@ -1,0 +1,1 @@
+C:\Users\renau\WebstormProjects\wled-dashboard\frontend\build\app\intermediates\cxx\RelWithDebInfo\4n1q1b6g\obj\x86
