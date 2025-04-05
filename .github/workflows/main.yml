@@ -44,7 +44,7 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script_stop: true  # Stop if any command fails
           script: |
-            cd docker-compose
-            sudo docker compose pull wled
-            sudo docker compose up -d wled
+            cd docker-compose && \
+            sudo docker compose pull wled && \
+            sudo docker compose up -d wled && \
             sudo docker image prune -f
