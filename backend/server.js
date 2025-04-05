@@ -11,7 +11,7 @@ const app = express();
 app.use(morgan('dev'));
 
 const corsOptions = {
-    origin: 'https://leds..duckdns.org', // Allow only this origin
+    origin: process.env.ALLOWED_ORIGIN || '*', // Allow only this origin
     methods: 'GET,POST,PUT,DELETE', // Allow specific methods if needed
     allowedHeaders: 'Content-Type,X-API-Key,Authorization',  // Allow necessary headers
     credentials: true, // If you want to allow cookies and authentication headers
