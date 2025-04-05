@@ -21,6 +21,7 @@ A secure backend for managing and controlling WLED devices with preset functiona
 - WLED instance management
 - Preset creation and management
 - Direct WLED device control
+- Custom ordering of instances and presets
 - Input validation and error handling
 - Rate limiting for API protection
 - Cross-Origin Resource Sharing (CORS) configuration
@@ -51,6 +52,7 @@ GET /api/instances
         "id": 1,
         "ip": "192.168.1.100",
         "name": "Living Room",
+        "display_order": 0,
         "last_seen": "2023-05-15T14:30:00.000Z"
     }
 ]
@@ -58,6 +60,7 @@ GET /api/instances
 
 **Notes:**
 - Missing/empty names will be automatically populated from the WLED device info if possible
+- Instances are returned in order defined by their `display_order` value
 
 #### Create Instance
 
@@ -80,6 +83,7 @@ POST /api/instances
 - Validates IP address format
 - Ensures the device is a proper WLED controller
 - Checks for duplicate IP addresses
+- New instances are assigned the next available display order value
 
 #### Update Instance
 
@@ -102,6 +106,46 @@ PUT /api/instances/{id}
 DELETE /api/instances/{id}
 ```
 
+#### Reorder Instances
+
+```
+POST /api/instances/reorder
+```
+
+**Request Body:**
+
+```json
+{
+    "orderedIds": [3, 1, 2, 4]
+}
+```
+
+**Response:**
+```json
+[
+    {
+        "id": 3,
+        "ip": "192.168.1.102",
+        "name": "Kitchen",
+        "display_order": 0,
+        "last_seen": "2023-05-15T14:30:00.000Z"
+    },
+    {
+        "id": 1,
+        "ip": "192.168.1.100",
+        "name": "Living Room",
+        "display_order": 1,
+        "last_seen": "2023-05-15T14:30:00.000Z"
+    },
+    ...
+]
+```
+
+**Notes:**
+- Updates the display order of instances based on the array position
+- Returns all instances in their new order
+- Database transactions ensure all updates succeed or fail together
+
 ### Preset Management
 
 #### Get All Presets
@@ -117,11 +161,15 @@ GET /api/presets
     {
         "id": 1,
         "name": "Party Mode",
+        "display_order": 0,
         "created_at": "2023-05-15T14:30:00.000Z",
         "instance_count": 2
     }
 ]
 ```
+
+**Notes:**
+- Presets are returned in order defined by their `display_order` value
 
 #### Get Preset Details
 
@@ -182,6 +230,7 @@ POST /api/presets
 - `instance_preset` can be a number (WLED preset index) or object (direct state)
 - Database transactions ensure data integrity
 - Name must be unique
+- New presets are assigned the next available display order value
 
 #### Update Preset
 
@@ -245,6 +294,46 @@ POST /api/presets/{id}/apply
     ]
 }
 ```
+
+#### Reorder Presets
+
+```
+POST /api/presets/reorder
+```
+
+**Request Body:**
+
+```json
+{
+    "orderedIds": [3, 1, 2, 4]
+}
+```
+
+**Response:**
+```json
+[
+    {
+        "id": 3,
+        "name": "Movie Night",
+        "display_order": 0,
+        "created_at": "2023-05-15T14:30:00.000Z",
+        "instance_count": 3
+    },
+    {
+        "id": 1,
+        "name": "Party Mode",
+        "display_order": 1,
+        "created_at": "2023-05-15T14:30:00.000Z",
+        "instance_count": 2
+    },
+    ...
+]
+```
+
+**Notes:**
+- Updates the display order of presets based on the array position
+- Returns all presets in their new order
+- Database transactions ensure all updates succeed or fail together
 
 ### WLED Device Interaction
 
@@ -380,8 +469,8 @@ GET /wled/{instanceId}/info
 
 **Tables:**
 
-- `instances` (id, ip, name, last_seen)
-- `presets` (id, name, created_at)
+- `instances` (id, ip, name, display_order, last_seen)
+- `presets` (id, name, display_order, created_at)
 - `preset_instances` (preset_id, instance_id, instance_preset)
 
 ## Environment Variables
