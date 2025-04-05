@@ -128,13 +128,6 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
             // Extract preset ID if available
             if (state.containsKey('ps')) {
               int presetId = state['ps'];
-              // If ps is -1 and there are available presets, use the first one
-              if (presetId == -1 && _availablePresets.containsKey(instance.id) && _availablePresets[instance.id]!.isNotEmpty) {
-                // Get the first key from the presets map
-                final firstPresetKey = _availablePresets[instance.id]!.keys.first;
-                // Try to parse it as int, fallback to -1 if it fails
-                presetId = int.tryParse(firstPresetKey.toString()) ?? -1;
-              }
               _currentDevicePresets[instance.id] = presetId;
             }
 
@@ -348,17 +341,16 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
     final presetItems = hasPresets ? _buildPresetItems(instance.id) : <DropdownMenuItem<dynamic>>[];
 
     // Get current preset value for dropdown (only used if not using current state)
-    dynamic presetValue;
-    if (_currentDevicePresets.containsKey(instance.id)) {
-      presetValue = _currentDevicePresets[instance.id];
-      // If preset is -1, use first preset if available
-      if (presetValue == -1 && presetItems.isNotEmpty) {
-        presetValue = presetItems.first.value;
-      }
-    } else if (presetItems.isNotEmpty) {
+
+    dynamic presetValue = _currentDevicePresets[instance.id];
+    // If preset is -1, use first preset if available
+    if (presetValue == -1 && presetItems.isNotEmpty) {
       presetValue = presetItems.first.value;
-    } else {
-      presetValue = 1; // Default value if nothing else is available
+    }
+
+    // if editing
+    if(widget.preset != null) {
+      presetValue = _instancePresets[instance.id];
     }
 
     // Make sure we have a valid preset selection that exists in the dropdown
