@@ -17,6 +17,8 @@ COPY backend/ ./backend/
 
 # Set environment
 ENV NODE_ENV=production
+ENV DB_PATH=/data/database.db
+ENV PORT=3000
 WORKDIR /app/backend
 
 # Install dependencies
