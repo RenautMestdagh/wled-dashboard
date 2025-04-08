@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/instance.dart';
 import '../services/api_service.dart';
+import '../widgets/cct_slider.dart';
 import '../widgets/colorpicker.dart';
 import '../widgets/instance_modal.dart';
 
@@ -14,7 +16,7 @@ class InstanceScreen extends StatefulWidget {
   const InstanceScreen({
     super.key,
     required this.instance,
-    this.onInstanceDeleted, // Add this parameter
+    this.onInstanceDeleted,
   });
 
   @override
@@ -24,6 +26,8 @@ class InstanceScreen extends StatefulWidget {
 class _InstanceScreenState extends State<InstanceScreen> {
   String _instanceName = '';
   bool _instanceSupportsRGB = false;
+  bool _instanceSupportsWhite = false;
+  bool _instanceSupportsCCT = false;
   bool _isLoading = true;
   bool _isBackgroundLoading = false;
   Map<String, dynamic> _devicePresets = {};
@@ -31,11 +35,12 @@ class _InstanceScreenState extends State<InstanceScreen> {
   bool _power = false;
   double _brightness = 255;
   int? _activePresetId;
-  List<List<int>> _colors = [
+  List<List<double>> _colors = [
     [0, 0, 0],
     [0, 0, 0],
     [0, 0, 0],
   ];
+  int _cctValue = 127; // Default CCT value
   final GlobalKey _moreButtonKey = GlobalKey();
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
 
@@ -44,6 +49,8 @@ class _InstanceScreenState extends State<InstanceScreen> {
     super.initState();
     _instanceName = widget.instance.name;
     _instanceSupportsRGB = widget.instance.supportsRGB;
+    _instanceSupportsWhite = widget.instance.supportsWhite;
+    _instanceSupportsCCT = widget.instance.supportsCCT;
     _loadDeviceData();
   }
 
@@ -85,6 +92,8 @@ class _InstanceScreenState extends State<InstanceScreen> {
     setState(() {
       _instanceName = widget.instance.name;
       _instanceSupportsRGB = widget.instance.supportsRGB;
+      _instanceSupportsWhite = widget.instance.supportsWhite;
+      _instanceSupportsCCT = widget.instance.supportsCCT;
     });
 
     _devicePresets = await apiService.getDevicePresets(widget.instance.id);
@@ -119,32 +128,49 @@ class _InstanceScreenState extends State<InstanceScreen> {
 
   void _applyDeviceState(Map<String, dynamic> state) {
     _deviceState = state;
-    _power = _deviceState['on'] ?? true;
+    _power = _deviceState['on'] ?? false;
     _brightness = (_deviceState['bri'] ?? 128).toDouble();
     _activePresetId = _deviceState['ps'];
 
     if (_deviceState['seg'] != null && _deviceState['seg'] is List && _deviceState['seg'].isNotEmpty) {
       var segment = _deviceState['seg'][0];
+
+      // Extract CCT value if available
+      if (segment['cct'] != null) {
+        _cctValue = segment['cct'];
+      }
+
+      // Extract colors if available
       if (segment['col'] != null && segment['col'] is List && segment['col'].isNotEmpty) {
-        _colors = (segment['col'] as List).map<List<int>>((c) => List<int>.from(c)).toList();
+        _colors = (segment['col'] as List).map<List<double>>((c) {
+          return List<double>.from(c.map((value) => value.toDouble() / 255.0));
+        }).toList();
+
+        // Ensure white channel exists if device supports it
+        if (_instanceSupportsWhite && _colors[0].length < 4) {
+          _colors[0] = [..._colors[0], 0.0]; // Add white channel with 0 value
+        }
       }
     }
   }
 
   Future<void> _togglePower() async {
     final apiService = Provider.of<ApiService>(context, listen: false);
+    final newPowerState = !_power;
+
     try {
-      setState(() => _power = !_power);
-      await apiService.updateDeviceState(widget.instance.id, {'on': _power});
+      setState(() => _power = newPowerState);
+      await apiService.updateDeviceState(widget.instance.id, {'on': newPowerState});
       _backgroundLoadDeviceData();
     } catch (e) {
-      setState(() => _power = !_power);
+      setState(() => _power = !newPowerState); // Revert on failure
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to toggle power')),
       );
     }
   }
 
+  // Updated brightness function with proper state management
   void _updateBrightness(double value) => setState(() => _brightness = value);
 
   Future<void> _onBrightnessChangeEnd(double value) async {
@@ -159,33 +185,123 @@ class _InstanceScreenState extends State<InstanceScreen> {
       );
       _backgroundLoadDeviceData();
     } catch (e) {
+      // Restore previous brightness on failure
+      setState(() => _brightness = _deviceState['bri']?.toDouble() ?? 128);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to update brightness')),
       );
     }
   }
 
+  // Color management functions
+  double _getRGBBrightness() {
+    if (_colors[0].length < 3) return 0;
+    return _colors[0].sublist(0, 3).reduce(max);
+  }
+
   void _updateColor(Color color) {
     setState(() {
-      _colors[0] = [
-        (color.r * 255).round(),
-        (color.g * 255).round(),
-        (color.b * 255).round(),
+      double rgbBrightness = _getRGBBrightness();
+      // Default to full brightness if current brightness is 0
+      if (rgbBrightness <= 0) rgbBrightness = 1.0;
+
+      // Create new list with updated RGB values while preserving white value
+      List<double> newColor = [
+        color.r * rgbBrightness,
+        color.g * rgbBrightness,
+        color.b * rgbBrightness,
       ];
+
+      // Preserve white value if it exists
+      if (_colors[0].length > 3) {
+        newColor.add(_colors[0][3]);
+      }
+
+      _colors[0] = newColor;
     });
   }
 
   Future<void> _onColorChangeEnd(Color color) async {
     _updateColor(color);
+    await _updateDeviceColors();
+  }
+
+  // RGB brightness slider function
+  Future<void> _updateRGBBrightness(double value) async {
+    setState(() {
+      final maxVal = _colors[0].take(3).reduce((a, b) => a > b ? a : b);
+      if (maxVal <= 0.001) {
+        // If RGB values are essentially 0, set all channels to the new value
+        _colors[0][0] = value;
+        _colors[0][1] = value;
+        _colors[0][2] = value;
+      } else {
+        // Scale RGB values proportionally
+        final factor = value / maxVal;
+        for (var i = 0; i < 3; i++) {
+          _colors[0][i] = (_colors[0][i] * factor).clamp(0.0, 1.0);
+        }
+      }
+    });
+
+    await _updateDeviceColors();
+  }
+
+  // White channel slider function
+  Future<void> _updateWhiteValue(double value) async {
+    setState(() {
+      if (_colors[0].length <= 3) {
+        _colors[0] = [..._colors[0], value];
+      } else {
+        _colors[0][3] = value;
+      }
+    });
+
+    await _updateDeviceColors();
+  }
+
+  // CCT slider function
+  Future<void> _updateCCTValue(double value) async {
+    final newCCT = value.toInt();
+    setState(() => _cctValue = newCCT);
+
     try {
       final apiService = Provider.of<ApiService>(context, listen: false);
+      await apiService.updateDeviceState(widget.instance.id, {
+        "on": true,
+        'seg': {
+          'cct': newCCT,
+        },
+      });
+      _backgroundLoadDeviceData();
+    } catch (e) {
+      // Restore previous CCT value on failure
+      final oldCCT = _deviceState['seg']?[0]?['cct'] ?? 127;
+      setState(() => _cctValue = oldCCT);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to update color temperature')),
+        );
+      }
+    }
+  }
+
+  // Helper to update device with current color settings
+  Future<void> _updateDeviceColors() async {
+    try {
+      final apiService = Provider.of<ApiService>(context, listen: false);
+
+      // Convert all colors from 0-1 range to 0-255 integers for WLED
+      List<List<int>> colorsForApi = _colors.map((color) {
+        return color.map((value) => (value * 255).round().clamp(0, 255)).toList();
+      }).toList();
 
       // WLED expects the color in segments
       await apiService.updateDeviceState(widget.instance.id, {
         "on": true,
         'seg': {
-          'col': _colors,
-          "fx": 0,
+          'col': colorsForApi,
         },
       });
 
@@ -194,7 +310,7 @@ class _InstanceScreenState extends State<InstanceScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to update color')),
+          const SnackBar(content: Text('Failed to update colors')),
         );
       }
     }
@@ -341,129 +457,247 @@ class _InstanceScreenState extends State<InstanceScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
-                      child: IntrinsicHeight(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 8),
-                              // Brightness slider
-                              Card(
-                                elevation: 1,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.brightness_6, color: theme.colorScheme.primary),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: SliderTheme(
-                                          data: SliderTheme.of(context).copyWith(
-                                            trackHeight: 3.0,
-                                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-                                          ),
-                                          child: Slider(
-                                            value: _brightness,
-                                            min: 0,
-                                            max: 255,
-                                            divisions: 255,
-                                            label: _brightness.round().toString(),
-                                            onChanged: _updateBrightness,
-                                            onChangeEnd: _onBrightnessChangeEnd,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              if (_instanceSupportsRGB) ...[
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
-                                  child: Text(
-                                    'Color',
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: IntrinsicHeight(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
+                        // Brightness slider
+                        Card(
+                          elevation: 1,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                            child: Row(
+                              children: [
+                                Icon(Icons.brightness_6, color: theme.colorScheme.primary),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: SliderTheme(
+                                    data: SliderTheme.of(context).copyWith(
+                                      trackHeight: 3.0,
+                                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                                    ),
+                                    child: Slider(
+                                      value: _brightness,
+                                      min: 0,
+                                      max: 255,
+                                      divisions: 255,
+                                      label: _brightness.round().toString(),
+                                      onChanged: _updateBrightness,
+                                      onChangeEnd: _onBrightnessChangeEnd,
                                     ),
                                   ),
                                 ),
-                                Card(
-                                  elevation: 1,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(16.0),
-                                    child: Center(
-                                      child: ColorPicker(
-                                        initialColor: Color.fromARGB(255, _colors[0][0], _colors[0][1], _colors[0][2]),
-                                        onColorChanged: _updateColor,
-                                        onColorChangeEnd: _onColorChangeEnd,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
                               ],
-
-                              Padding(
-                                padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
-                                child: Text(
-                                  'Presets',
-                                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              if (_devicePresets.isEmpty)
-                                const Card(
-                                  child: Padding(
-                                    padding: EdgeInsets.all(16.0),
-                                    child: Text('No presets found on this device'),
-                                  ),
-                                )
-                              else
-                                ..._devicePresets.entries.where((e) => e.value['n'] != null).map((entry) {
-                                  final presetId = int.tryParse(entry.key);
-                                  final isActive = presetId == _activePresetId;
-                                  return Card(
-                                    margin: const EdgeInsets.only(bottom: 6),
-                                    elevation: isActive ? 2 : 1,
-                                    color: isActive ? theme.colorScheme.primaryContainer : null,
-                                    child: Material(
-                                      borderRadius: BorderRadius.circular(12), // Same border radius as ListTile
-                                      color: Colors.transparent, // Make sure background is transparent
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(12), // Same border radius for ripple
-                                        onTap: () => _applyDevicePreset(entry.key),
-                                        child: ListTile(
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                          title: Text(
-                                            entry.value['n'] ?? 'Untitled',
-                                            style: TextStyle(
-                                              color: isActive ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface,
-                                              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                                            ),
-                                          ),
-                                          trailing: Icon(
-                                            isActive ? Icons.check_circle : Icons.play_arrow,
-                                            color: theme.colorScheme.secondary,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  );
-                                }).toList(),
-                              // Add an empty spacer at the bottom if needed
-                              const SizedBox(height: 16),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        if (_instanceSupportsRGB) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+                            child: Text(
+                              'Color',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Card(
+                            elevation: 1,
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Center(
+                                child: ColorPicker(
+                                  initialColor: Color.fromRGBO(
+                                      (_colors[0][0] * 255).round(),
+                                      (_colors[0][1] * 255).round(),
+                                      (_colors[0][2] * 255).round(),
+                                      1.0
+                                  ),
+                                  scaleFactor: 1.0/_getRGBBrightness().clamp(0.001, 1.0),
+                                  onColorChanged: _updateColor,
+                                  onColorChangeEnd: _onColorChangeEnd,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
+                        if (_instanceSupportsRGB && _instanceSupportsWhite) ...[
+                          const SizedBox(height: 12),
+                          Card(
+                              elevation: 1,
+                              child: Column(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.colorize, color: theme.colorScheme.primary),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: SliderTheme(
+                                            data: SliderTheme.of(context).copyWith(
+                                              trackHeight: 3.0,
+                                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                                            ),
+                                            child: Slider(
+                                              value: _getRGBBrightness(),
+                                              min: 0,
+                                              max: 1.0,
+                                              label: (_getRGBBrightness() * 100).toStringAsFixed(0) + "%",
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  final maxVal = _colors[0].take(3).reduce((a, b) => a > b ? a : b);
+                                                  if (maxVal <= 0.001) {
+                                                    _colors[0][0] = value;
+                                                    _colors[0][1] = value;
+                                                    _colors[0][2] = value;
+                                                  } else {
+                                                    final factor = value / maxVal;
+                                                    for (var i = 0; i < 3; i++) {
+                                                      _colors[0][i] = (_colors[0][i] * factor).clamp(0, 1.0);
+                                                    }
+                                                  }
+                                                });
+                                              },
+                                              onChangeEnd: _updateRGBBrightness,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.brightness_7, color: theme.colorScheme.primary),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: SliderTheme(
+                                            data: SliderTheme.of(context).copyWith(
+                                              trackHeight: 3.0,
+                                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                                            ),
+                                            child: Slider(
+                                              value: _colors[0].length > 3 ? _colors[0][3].toDouble() : 0,
+                                              min: 0,
+                                              max: 1.0,
+                                              label: (_colors[0].length > 3 ? _colors[0][3] * 100 : 0).toStringAsFixed(0) + "%",
+                                              onChanged: (value) {
+                                                setState(() {
+                                                  if (_colors[0].length <= 3) {
+                                                    _colors[0] = [..._colors[0], value];
+                                                  } else {
+                                                    _colors[0][3] = value;
+                                                  }
+                                                });
+                                              },
+                                              onChangeEnd: _updateWhiteValue,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (_instanceSupportsCCT) Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.thermostat, color: theme.colorScheme.primary),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: SliderTheme(
+                                            data: SliderTheme.of(context).copyWith(
+                                              trackHeight: 3.0,
+                                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                                              trackShape: CCTSliderTrackShape(),
+                                            ),
+                                            child: Slider(
+                                              value: _cctValue.toDouble(),
+                                              min: 0,
+                                              max: 255,
+                                              divisions: 255,
+                                              label: _cctValue.toString(),
+                                              onChanged: (value) {
+                                                setState(() => _cctValue = value.toInt());
+                                              },
+                                              onChangeEnd: _updateCCTValue,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              )
+                          ),
+                        ],
+
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4.0, bottom: 8.0, top: 16.0),
+                          child: Text(
+                            'Presets',
+                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        if (_devicePresets.isEmpty)
+                          const Card(
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Text('No presets found on this device'),
+                            ),
+                          )
+                        else
+                          ..._devicePresets.entries.where((e) => e.value['n'] != null).map((entry) {
+                            final presetId = int.tryParse(entry.key);
+                            final isActive = presetId == _activePresetId;
+                            return Card(
+                                margin: const EdgeInsets.only(bottom: 6),
+                                elevation: isActive ? 2 : 1,
+                                color: isActive ? theme.colorScheme.primaryContainer : null,
+                                child: Material(
+                                  borderRadius: BorderRadius.circular(12), // Same border radius as ListTile
+                                  color: Colors.transparent, // Make sure background is transparent
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(12), // Same border radius for ripple
+                                    onTap: () => _applyDevicePreset(entry.key),
+                                    child: ListTile(
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                      title: Text(
+                                        entry.value['n'] ?? 'Untitled',
+                                        style: TextStyle(
+                                          color: isActive ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface,
+                                          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                                        ),
+                                      ),
+                                      trailing: Icon(
+                                        isActive ? Icons.check_circle : Icons.play_arrow,
+                                        color: theme.colorScheme.secondary,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                            );
+                          }).toList(),
+                        // Add an empty spacer at the bottom if needed
+                        const SizedBox(height: 16),
+                      ],
                     ),
                   ),
+                ),
+              ),
+            ),
           );
         },
       ),

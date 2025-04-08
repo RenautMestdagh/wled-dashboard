@@ -474,7 +474,13 @@ class ApiService with ChangeNotifier {
         );
         final data = json.decode(response.body);
         instance.name = data['name']; // Use the new method
-        instance.supportsRGB = [1, 3, 7].contains(data['leds']['lc']);
+
+        // Assuming 'data' is a Map<String, dynamic> containing the light info
+        final lc = data['leds']['lc'] as int; // Extract the capability byte
+
+        instance.supportsRGB = (lc & 0x01) != 0;  // Check if bit 0 is set (RGB support)
+        instance.supportsWhite = (lc & 0x02) != 0;  // Check if bit 1 is set (White channel)
+        instance.supportsCCT = (lc & 0x04) != 0;  // Check if bit 2 is set (CCT support)
 
       } else {
         throw response;
