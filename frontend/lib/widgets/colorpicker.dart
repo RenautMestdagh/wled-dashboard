@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 
 class ColorPicker extends StatefulWidget {
   final Color initialColor;
+  final double scaleFactor;
   final ValueChanged<Color> onColorChanged;
   final ValueChanged<Color> onColorChangeEnd;
   final double size;
@@ -11,6 +12,7 @@ class ColorPicker extends StatefulWidget {
   const ColorPicker({
     Key? key,
     required this.initialColor,
+    required this.scaleFactor,
     required this.onColorChanged,
     required this.onColorChangeEnd,
     this.size = 200,
@@ -26,16 +28,24 @@ class _ColorPickerState extends State<ColorPicker> {
   @override
   void initState() {
     super.initState();
-    _currentColor = widget.initialColor;
+    _initializeColor();
+  }
+
+  void _initializeColor() {
+    _currentColor = Color.from(
+      alpha: 1.0,
+      red: (widget.initialColor.r * widget.scaleFactor.clamp(0, 1.0)),
+      green: (widget.initialColor.g * widget.scaleFactor.clamp(0, 1.0)),
+      blue: (widget.initialColor.b * widget.scaleFactor.clamp(0, 1.0)),
+    );
   }
 
   @override
   void didUpdateWidget(covariant ColorPicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialColor != widget.initialColor) {
-      setState(() {
-        _currentColor = widget.initialColor;
-      });
+    if (oldWidget.initialColor != widget.initialColor ||
+        oldWidget.scaleFactor != widget.scaleFactor) {
+      _initializeColor();
     }
   }
 
@@ -43,22 +53,21 @@ class _ColorPickerState extends State<ColorPicker> {
     setState(() {
       _currentColor = color;
     });
-    widget.onColorChanged(color);
+    // widget.onColorChanged(color);
   }
 
   void _onInteractionEnd(Color color) {
-    widget.onColorChangeEnd(color);
+    final scaledColor = Color.from(
+      alpha: 1.0,
+      red: (color.r / widget.scaleFactor.clamp(0.01, 1.0)).clamp(0, 1.0),
+      green: (color.g / widget.scaleFactor.clamp(0.01, 1.0)).clamp(0, 1.0),
+      blue: (color.b / widget.scaleFactor.clamp(0.01, 1.0)).clamp(0, 1.0),
+    );
+    widget.onColorChangeEnd(scaledColor);
   }
 
   void _onInteractionStart(Offset localOffset, BuildContext context) {
     _handleCircularPan(localOffset, context);
-  }
-
-  void setColor(Color color) {
-    setState(() {
-      _currentColor = color;
-    });
-    widget.onColorChanged(color);
   }
 
   @override
@@ -86,7 +95,10 @@ class _ColorPickerState extends State<ColorPicker> {
               ],
             ),
             child: CustomPaint(
-              painter: _CircularColorPickerPainter(_currentColor),
+              painter: _CircularColorPickerPainter(
+                currentColor: _currentColor,
+                scaleFactor: widget.scaleFactor,
+              ),
             ),
           ),
         ),
@@ -103,7 +115,6 @@ class _ColorPickerState extends State<ColorPicker> {
     final double angle = -math.atan2(position.dy, -position.dx);
     double normalizedAngle = (angle + math.pi) % (2 * math.pi);
 
-    // Convert to 0-360 range
     final double hue = (normalizedAngle / (2 * math.pi)) * 360;
     final double saturation = (distance / radius).clamp(0.0, 1.0);
     final double value = 1.0;
@@ -115,8 +126,12 @@ class _ColorPickerState extends State<ColorPicker> {
 
 class _CircularColorPickerPainter extends CustomPainter {
   final Color currentColor;
+  final double scaleFactor;
 
-  _CircularColorPickerPainter(this.currentColor);
+  _CircularColorPickerPainter({
+    required this.currentColor,
+    required this.scaleFactor,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -156,8 +171,15 @@ class _CircularColorPickerPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
+    final Color innerCursorColor = Color.from(
+      alpha: 1.0,
+      red: (currentColor.r / scaleFactor).clamp(0, 1.0),
+      green: (currentColor.g / scaleFactor).clamp(0, 1.0),
+      blue: (currentColor.b / scaleFactor).clamp(0, 1.0),
+    );
+
     final Paint innerCursorPaint = Paint()
-      ..color = currentColor
+      ..color = innerCursorColor
       ..style = PaintingStyle.fill;
 
     canvas.drawCircle(cursorPosition, 12, outerCursorPaint);
