@@ -229,7 +229,7 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
 
       final preset = _oldStateJson[instanceId] ??
           _instancePresets[instanceId] ??
-          (_currentStateJson[instanceId]!['ps']! == '-1'
+          (_currentStateJson[instanceId]!['ps']! == -1
               ? _currentStateJson[instanceId] // If 'ps' is "-1", use _currentStateJson[instanceId]
               : _currentStateJson[instanceId]!['ps']); // Otherwise, use 'ps'
 
