@@ -40,31 +40,31 @@ db.serialize(() => {
     // Create instances table with display_order
     db.run(`
         CREATE TABLE IF NOT EXISTS instances (
-                                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                                 ip TEXT UNIQUE NOT NULL,
-                                                 name TEXT,
-                                                 display_order INTEGER DEFAULT 0,
-                                                 last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip TEXT UNIQUE NOT NULL,
+            name TEXT,
+            display_order INTEGER DEFAULT 0,
+            last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     `);
 
     // Create presets table with display_order
     db.run(`
         CREATE TABLE IF NOT EXISTS presets (
-                                               id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                               name TEXT NOT NULL UNIQUE,
-                                               display_order INTEGER DEFAULT 0,
-                                               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            display_order INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     `);
 
     // Create preset_instances join table
     db.run(`
         CREATE TABLE IF NOT EXISTS preset_instances (
-                                                        preset_id INTEGER NOT NULL,
-                                                        instance_id INTEGER NOT NULL,
-                                                        instance_preset TEXT NOT NULL,
-                                                        PRIMARY KEY (preset_id, instance_id),
+            preset_id INTEGER NOT NULL,
+            instance_id INTEGER NOT NULL,
+            instance_preset TEXT NOT NULL,
+            PRIMARY KEY (preset_id, instance_id),
             FOREIGN KEY (preset_id) REFERENCES presets(id) ON DELETE CASCADE,
             FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE
             )

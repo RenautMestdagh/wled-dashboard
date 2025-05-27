@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/screens/reorder_screen.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/theme_service.dart';
@@ -62,6 +63,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Card(
+                  elevation: 5,
                   child: Consumer<ThemeService>(
                     builder: (context, themeService, child) {
                       return SwitchListTile(
@@ -77,7 +79,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 30),
+                Text(
+                  'Reorder',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  elevation: 5,
+                  child: Column(
+                    children: [
+                      ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        title: Text(
+                          'Instances',
+                          style: TextStyle(color: theme.colorScheme.onSurface),
+                        ),
+                        trailing: const Icon(Icons.swap_vert),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ReorderScreen(
+                                isInstances: true,
+                                items: apiService.instances,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        title: Text(
+                          'Presets',
+                          style: TextStyle(color: theme.colorScheme.onSurface),
+                        ),
+                        trailing: const Icon(Icons.swap_vert),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ReorderScreen(
+                                isInstances: false,
+                                items: apiService.presets,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
                 Text(
                   'API Settings',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -86,6 +145,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 8),
                 Card(
+                  elevation: 5,
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(

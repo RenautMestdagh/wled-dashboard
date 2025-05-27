@@ -1,6 +1,5 @@
 const db = require('../config/database');
 const { get } = require("axios");
-const { getInstanceInfo } = require("../services/wled");
 
 // Helper functions to reduce duplication
 const dbQuery = (sql, params = []) => {
@@ -29,6 +28,11 @@ const dbRun = (sql, params = []) => {
         });
     });
 };
+
+// Transaction helper functions
+const beginTransaction = () => dbRun('BEGIN TRANSACTION');
+const commitTransaction = () => dbRun('COMMIT');
+const rollbackTransaction = () => dbRun('ROLLBACK').catch(() => {});
 
 // Validation helpers
 const validateIP = (ip) => {
@@ -207,7 +211,7 @@ module.exports = {
         }
 
         try {
-            await beginTransaction(); // Assuming you have this function or use the one from presets controller
+            await beginTransaction();
 
             // Update the order for each ID in the array
             for (let index = 0; index < orderedIds.length; index++) {
@@ -215,13 +219,13 @@ module.exports = {
                 await dbRun("UPDATE instances SET display_order = ? WHERE id = ?", [index, id]);
             }
 
-            await commitTransaction(); // Assuming you have this function or use the one from presets controller
+            await commitTransaction();
 
             // Return the reordered instances
             const instances = await dbQuery("SELECT * FROM instances ORDER BY display_order");
             res.json(instances);
         } catch (error) {
-            await rollbackTransaction(); // Assuming you have this function or use the one from presets controller
+            await rollbackTransaction();
             console.error('Failed to reorder instances:', error);
             res.status(500).json({ error: error.message });
         }

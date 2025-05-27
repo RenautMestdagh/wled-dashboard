@@ -482,7 +482,12 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
             ),
           ),
 
-        const Divider(height: 20),
+        Divider(
+          height: 20,
+          indent: 10,
+          endIndent: 10,
+          color: theme.colorScheme.surfaceContainerHighest,
+        ),
       ],
     );
   }

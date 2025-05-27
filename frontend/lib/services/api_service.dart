@@ -299,6 +299,40 @@ class ApiService with ChangeNotifier {
     }
   }
 
+  Future<void> reorderInstances(List<int> orderedIds) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/instances/reorder'),
+        headers: {
+          'X-API-Key': _apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'orderedIds': orderedIds,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final List<int> responseIds = data.map((json) => json['id'] as int).toList();
+
+        if (responseIds.length != orderedIds.length || responseIds.asMap().entries.any((entry) => entry.value != orderedIds[entry.key])) {
+          _errorMessage = 'Failed to reorder instances';
+        } else {
+          _instances = orderedIds.map((id) => _instances.firstWhere((instance) => instance.id == id)).toList();
+        }
+
+      } else {
+        throw response; // Throw the response to be handled by _handleApiError
+      }
+    } catch (e) {
+      _handleApiError(e);
+      rethrow;
+    } finally {
+      notifyListeners();
+    }
+  }
+
 
 
   // ------------- PRESETS -------------
@@ -453,6 +487,40 @@ class ApiService with ChangeNotifier {
       rethrow;
     } finally {
       _isLoading = false;
+    }
+  }
+
+  Future<void> reorderPresets(List<int> orderedIds) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/presets/reorder'),
+        headers: {
+          'X-API-Key': _apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'orderedIds': orderedIds,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        final List<int> responseIds = data.map((json) => json['id'] as int).toList();
+
+        if (responseIds.length != orderedIds.length || responseIds.asMap().entries.any((entry) => entry.value != orderedIds[entry.key])) {
+          _errorMessage = 'Failed to reorder presets';
+        } else {
+          _presets = orderedIds.map((id) => _presets.firstWhere((preset) => preset.id == id)).toList();
+        }
+
+      } else {
+        throw response; // Throw the response to be handled by _handleApiError
+      }
+    } catch (e) {
+      _handleApiError(e);
+      rethrow;
+    } finally {
+      notifyListeners();
     }
   }
 
