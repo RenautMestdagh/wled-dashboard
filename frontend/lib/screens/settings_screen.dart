@@ -138,7 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 30),
                 Text(
-                  'API Settings',
+                  'API Connection',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -216,7 +216,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 strokeWidth: 2,
                               ),
                             )
-                                : const Text('Save Settings'),
+                                : const Text('Test & Save Connection'),
                           ),
                         ),
                       ],
