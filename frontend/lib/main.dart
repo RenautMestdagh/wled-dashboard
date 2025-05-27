@@ -28,7 +28,7 @@ void main() async {
 
   // Wait for both initialization and first frame
   await Future.wait([
-    apiService.initialize(),
+    // apiService.initialize(),
     _waitForFirstFrame(widgetsBinding),
   ]);
 

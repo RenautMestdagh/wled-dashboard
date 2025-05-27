@@ -306,15 +306,15 @@ module.exports = {
 
             // Return the reordered presets
             const presets = await dbQuery(`
-      SELECT
-        p.id,
-        p.name,
-        p.created_at,
-        p.display_order,
-        (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
-      FROM presets p
-      ORDER BY p.display_order
-    `);
+             SELECT
+               p.id,
+               p.name,
+               p.created_at,
+               p.display_order,
+               (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
+             FROM presets p
+             ORDER BY p.display_order
+    `       );
 
             res.json(presets);
         } catch (error) {
