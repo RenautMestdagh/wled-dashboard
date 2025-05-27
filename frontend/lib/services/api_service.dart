@@ -40,11 +40,10 @@ class ApiService with ChangeNotifier {
       return;
     }
 
-
-    await fetchData();
+    await fetchData(showAPISuccess: false);
   }
 
-  Future<bool> _checkHealth() async {
+  Future<bool> _checkHealth(showAPISuccess) async {
     try {
       final response = await http.get(Uri.parse('$_baseUrl/health'))
           .timeout(const Duration(seconds: 3));
@@ -53,7 +52,7 @@ class ApiService with ChangeNotifier {
         final data = json.decode(response.body);
         _isHealthy = data['status'] == 'healthy';
 
-        if(_isHealthy)
+        if(_isHealthy && showAPISuccess)
           _successMessage = 'Connected to API';
 
         return _isHealthy;
@@ -100,9 +99,9 @@ class ApiService with ChangeNotifier {
     _presets = [];
   }
 
-  Future<void> fetchData() async {
+  Future<void> fetchData({bool showAPISuccess = true}) async {
     if(!_isHealthy)
-      if(!await _checkHealth())
+      if(!await _checkHealth(showAPISuccess))
         return;
 
     if (_apiKey.isEmpty) {
