@@ -111,8 +111,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               apiService.clearMessages();
 
                               try {
-                                final bool success = await apiService.autodiscoverInstances();
-                                if(success) {
+                                final bool newInstances = await apiService.autodiscoverInstances();
+                                if(newInstances) {
                                   apiService.fetchData();
                                 }
                               } catch (e) {
