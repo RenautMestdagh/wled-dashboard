@@ -217,7 +217,7 @@ class ApiService with ChangeNotifier {
       Map<String, dynamic> jsonResponse = json.decode(response.body);
       if (response.statusCode == 200) {
         _successMessage = "${jsonResponse['message']}\n${jsonResponse['totalFound']} instances found";
-        return true;
+        return jsonResponse['newInstances'];
       } else {
         _errorMessage = "${jsonResponse['message']}\n${jsonResponse['error']}";
         return false;

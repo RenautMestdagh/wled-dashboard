@@ -8,6 +8,12 @@ RUN flutter pub get && flutter build web
 FROM node:18-alpine
 WORKDIR /app
 
+# Install mDNS resolution tools
+RUN apk add --no-cache avahi nss-mdns libc6-compat
+
+# Fix nsswitch.conf for mDNS support
+RUN echo 'hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4' > /etc/nsswitch.conf
+
 # Create data directory
 RUN mkdir -p /data && chown node:node /data
 

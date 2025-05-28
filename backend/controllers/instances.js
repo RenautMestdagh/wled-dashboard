@@ -156,6 +156,7 @@ module.exports = {
                 mdns.destroy();
 
                 // Process each discovered device
+                let newInstances = false;
                 for (const device of wledDevices) {
                     try {
                         // Check if device already exists
@@ -164,6 +165,7 @@ module.exports = {
                         if (!existingInstance) {
                             // Add new device using our new helper function
                             await addInstance(device.ip, '');
+                            newInstances = true;
                         }
                     } catch (error) {
                         console.error(`Error processing device ${device.ip}:`, error);
@@ -173,6 +175,7 @@ module.exports = {
                 res.status(200).json({
                     message: 'WLED device discovery completed',
                     totalFound: wledDevices.length,
+                    newInstances: newInstances,
                 });
 
             }, 2500);
