@@ -5,6 +5,7 @@ const presetsController = require('../controllers/presets');
 
 // Instance routes
 router.get('/instances', instancesController.getAllInstances);
+router.post('/instances/autodiscover', instancesController.autoDiscoverInstances);
 router.post('/instances', instancesController.createInstance);
 router.put('/instances/:id', instancesController.updateInstance);
 router.delete('/instances/:id', instancesController.deleteInstance);

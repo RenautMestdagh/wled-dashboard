@@ -21,6 +21,7 @@
     "helmet": "^8.1.0",
     "http-proxy-middleware": "^3.0.3",
     "morgan": "^1.10.0",
+    "multicast-dns": "^7.2.5",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {

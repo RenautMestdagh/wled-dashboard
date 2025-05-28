@@ -12,6 +12,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  bool _isDiscovering = false;
   late final TextEditingController _urlController;
   late final TextEditingController _keyController;
   late final FocusNode _urlFocusNode;
@@ -79,63 +80,121 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     },
                   ),
                 ),
-                const SizedBox(height: 30),
-                Text(
-                  'Reorder',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+                if (apiService.isHealthy) ...[
+                  const SizedBox(height: 30),
+                  Text(
+                    'Autodiscover',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Card(
-                  elevation: 5,
-                  child: Column(
-                    children: [
-                      ListTile(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        title: Text(
-                          'Instances',
-                          style: TextStyle(color: theme.colorScheme.onSurface),
-                        ),
-                        trailing: const Icon(Icons.swap_vert),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ReorderScreen(
-                                isInstances: true,
-                                items: apiService.instances,
-                              ),
+                  const SizedBox(height: 8),
+                  Card(
+                    elevation: 5,
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
                             ),
-                          );
-                        },
-                      ),
-                      ListTile(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        title: Text(
-                          'Presets',
-                          style: TextStyle(color: theme.colorScheme.onSurface),
-                        ),
-                        trailing: const Icon(Icons.swap_vert),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ReorderScreen(
-                                isInstances: false,
-                                items: apiService.presets,
+                            onPressed: _isDiscovering
+                                ? null
+                                : () async {
+                              // Clear focus from text fields
+                              setState(() {
+                                _isDiscovering = true;
+                              });
+
+                              // Clear any existing messages
+                              apiService.clearMessages();
+
+                              try {
+                                final bool success = await apiService.autodiscoverInstances();
+                                if(success) {
+                                  apiService.fetchData();
+                                }
+                              } catch (e) {
+                                // Errors are already handled in updateSettings
+                              } finally {
+                                setState(() {
+                                  _isDiscovering = false;
+                                });
+                              }
+                            },
+                            child: _isDiscovering
+                                ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                            )
+                                : const Text('Autodiscover instances'),
+                          ),
+                        ),
+                      ]
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 30),
+                  Text(
+                    'Reorder',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    elevation: 5,
+                    child: Column(
+                      children: [
+                        ListTile(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          title: Text(
+                            'Instances',
+                            style: TextStyle(color: theme.colorScheme.onSurface),
+                          ),
+                          trailing: const Icon(Icons.swap_vert),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ReorderScreen(
+                                  isInstances: true,
+                                  items: apiService.instances,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        ListTile(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          title: Text(
+                            'Presets',
+                            style: TextStyle(color: theme.colorScheme.onSurface),
+                          ),
+                          trailing: const Icon(Icons.swap_vert),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ReorderScreen(
+                                  isInstances: false,
+                                  items: apiService.presets,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 30),
                 Text(
                   'API Connection',
