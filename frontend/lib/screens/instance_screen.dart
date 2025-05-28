@@ -65,6 +65,16 @@ class _InstanceScreenState extends State<InstanceScreen> {
     }
   }
 
+  // Used on reordening instances to detect instance change
+  @override
+  void didUpdateWidget(InstanceScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.instance != oldWidget.instance) {
+      _loadDeviceData();
+    }
+  }
+
   Future<void> _loadDeviceData() async {
     setState(() => _isLoading = true);
     try {
