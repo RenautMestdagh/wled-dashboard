@@ -17,12 +17,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   late List<Widget> _screens;
 
-  void changeTab(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
-
   // Check if any instance is powered on
   bool _isAnyInstanceOn(ApiService apiService) {
     // If we have no instances or instances with state, consider the master power "off"
