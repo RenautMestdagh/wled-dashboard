@@ -4,18 +4,8 @@ WORKDIR /app/frontend
 COPY frontend/ .
 RUN flutter pub get && flutter build web
 
-# Stage 2: Build Node.js backend with mDNS support
-FROM node:18-slim
-
-# Install mDNS resolution tools
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    libnss-mdns avahi-daemon avahi-utils && \
-    rm -rf /var/lib/apt/lists/*
-
-# Fix nsswitch.conf for mDNS support
-RUN sed -i 's/^hosts:.*/hosts: files mdns4_minimal [NOTFOUND=return] dns mdns4/' /etc/nsswitch.conf
-
+# Stage 2: Build Node.js backend
+FROM node:18-alpine
 WORKDIR /app
 
 # Create data directory
@@ -38,7 +28,6 @@ RUN npm install --omit=dev
 USER node
 
 EXPOSE 3000
-
 CMD ["node", "server.js"]
 
 # Volume declaration
