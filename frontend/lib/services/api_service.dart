@@ -70,6 +70,7 @@ class ApiService with ChangeNotifier {
 
   String get baseUrl => _baseUrl;
   String get apiKey => _apiKey;
+  bool get isHealthy => _isHealthy;
   bool get isLoading => _isLoading;
   List<WLEDInstance> get instances => _instances;
   List<Preset> get presets => _presets;
@@ -203,6 +204,28 @@ class ApiService with ChangeNotifier {
     } catch (e) {
       _instances = [];
       rethrow; // Re-throw to be handled by the caller
+    }
+  }
+
+  Future<bool> autodiscoverInstances() async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/instances/autodiscover'),
+        headers: {'X-API-Key': _apiKey},
+      ).timeout(const Duration(seconds: 10));
+
+      Map<String, dynamic> jsonResponse = json.decode(response.body);
+      if (response.statusCode == 200) {
+        _successMessage = "${jsonResponse['message']}\n${jsonResponse['totalFound']} instances found";
+        return true;
+      } else {
+        _errorMessage = "${jsonResponse['message']}\n${jsonResponse['error']}";
+        return false;
+      }
+    } catch (e) {
+      rethrow; // Re-throw to be handled by the caller
+    } finally {
+      notifyListeners();
     }
   }
 

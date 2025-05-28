@@ -1,5 +1,6 @@
 const db = require('../config/database');
 const { get } = require("axios");
+const MulticastDNS = require('multicast-dns');
 
 // Helper functions to reduce duplication
 const dbQuery = (sql, params = []) => {
@@ -64,6 +65,25 @@ const checkWLEDConnection = async (ip) => {
     }
 };
 
+const addInstance = async (ip, name) => {
+    try {
+        // Get the next display order
+        const maxOrderResult = await dbGet("SELECT MAX(display_order) as maxOrder FROM instances");
+        const nextOrder = maxOrderResult.maxOrder !== null ? maxOrderResult.maxOrder + 1 : 0;
+
+        // Create instance
+        await dbRun(
+            "INSERT INTO instances (ip, name, display_order) VALUES (?, ?, ?)",
+            [ip, name, nextOrder]
+        );
+
+        return true;
+    } catch (error) {
+        console.error("Failed to add discovered instance:", error);
+        return false;
+    }
+};
+
 
 module.exports = {
     getAllInstances: async (req, res) => {
@@ -73,6 +93,93 @@ module.exports = {
         } catch (error) {
             console.error('Failed to get instances:', error);
             res.status(500).json({ error: error.message });
+        }
+    },
+
+    autoDiscoverInstances: async (req, res) => {
+        try {
+            // Array to store discovered WLED devices
+            const wledDevices = [];
+
+            // Create an mDNS instance
+            const mdns = MulticastDNS();
+
+            // Handle response packets
+            mdns.on('response', async (packet) => {
+                // Process answers and additionals for SRV and A records
+                const records = [...(packet.answers || []), ...(packet.additionals || [])];
+
+                for (const record of records) {
+                    if (record.type === 'SRV') {
+                        const port = record.data.port;
+                        const target = record.data.target;
+
+                        // Find corresponding A record for IP
+                        const aRecord = records.find(
+                            (r) => r.name === target && r.type === 'A'
+                        );
+
+                        if (aRecord && aRecord.data) {
+                            const ip = aRecord.data;
+
+                            // Verify if it's a WLED device by querying /json/info
+                            try {
+                                const response = await get(`http://${ip}:${port}/json/info`, {
+                                    timeout: 2000, // 2-second timeout for API request
+                                });
+
+                                if (response.status === 200 && response.data.ver) {
+                                    wledDevices.push({
+                                        ip: ip,
+                                    });
+                                }
+                            } catch (error) {
+                                console.log(`Skipping ${ip}: Not a valid WLED device or unreachable`);
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Query for _http._tcp.local services
+            mdns.query({
+                questions: [
+                    {
+                        name: '_http._tcp.local',
+                        type: 'PTR',
+                    },
+                ],
+            });
+
+            // Stop discovery after 5 seconds and send response
+            setTimeout(async () => {
+                mdns.destroy();
+
+                // Process each discovered device
+                for (const device of wledDevices) {
+                    try {
+                        // Check if device already exists
+                        const existingInstance = await dbGet("SELECT id FROM instances WHERE ip = ?", [device.ip]);
+
+                        if (!existingInstance) {
+                            // Add new device using our new helper function
+                            await addInstance(device.ip, '');
+                        }
+                    } catch (error) {
+                        console.error(`Error processing device ${device.ip}:`, error);
+                    }
+                }
+
+                res.status(200).json({
+                    message: 'WLED device discovery completed',
+                    totalFound: wledDevices.length,
+                });
+
+            }, 2500);
+
+        } catch (error) {
+            console.error('Discovery error:', error);
+            res.status(500).json({ message: 'Error during autodiscovery', error: error.message });
         }
     },
 
@@ -98,17 +205,13 @@ module.exports = {
                 return res.status(409).json({ error: "A WLED instance with this IP already exists" });
             }
 
-            const maxOrderResult = await dbGet("SELECT MAX(display_order) as maxOrder FROM instances");
-            const nextOrder = maxOrderResult.maxOrder !== null ? maxOrderResult.maxOrder + 1 : 0;
-
-            // Create instance
-            const result = await dbRun(
-                "INSERT INTO instances (ip, name, display_order) VALUES (?, ?, ?)",
-                [ip, name, nextOrder]
-            );
+            const success = await addInstance(ip, name);
+            if (!success) {
+                throw new Error("Failed to create instance");
+            }
 
             // Get the newly created instance
-            const newInstance = await dbGet("SELECT * FROM instances WHERE id = ?", [result.lastID]);
+            const newInstance = await dbGet("SELECT * FROM instances WHERE id = LAST_INSERT_ROWID()");
             newInstance.supportsRGB = [1, 3, 7].includes(connectionCheck.data.leds.lc);
 
             res.status(201).json(newInstance);
