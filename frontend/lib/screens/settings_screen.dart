@@ -48,14 +48,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: Consumer<ApiService>(
         builder: (context, apiService, child) {
-
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (apiService.isLoading)
-                  const LinearProgressIndicator(),
                 Text(
                   'Appearance',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -113,7 +110,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               try {
                                 final bool newInstances = await apiService.autodiscoverInstances();
                                 if(newInstances) {
-                                  apiService.fetchData();
+                                  await apiService.fetchData();
                                 }
                               } catch (e) {
                                 // Errors are already handled in updateSettings
@@ -248,7 +245,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                             ),
-                            onPressed: apiService.isLoading
+                            onPressed: apiService.isLoading || _isDiscovering
                                 ? null
                                 : () async {
                               // Clear focus from text fields
@@ -267,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 // Errors are already handled in updateSettings
                               }
                             },
-                            child: apiService.isLoading
+                            child: apiService.isLoading && !_isDiscovering
                                 ? const SizedBox(
                               width: 20,
                               height: 20,

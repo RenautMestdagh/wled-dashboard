@@ -59,7 +59,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Health Check
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'healthy' });
+    const API_KEYS = new Set(process.env.API_KEYS?.split(',') || []);
+    const givenKey = req.headers['x-api-key'] || req.query.apiKey;
+    res.status(200).json({ status: 'healthy', authenticated: (givenKey && API_KEYS.has(givenKey)) ?? false });
 });
 
 // All routes require authentication
