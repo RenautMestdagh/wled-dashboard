@@ -160,7 +160,13 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
         _instancePresets[instanceId] = _currentStateJson[instanceId];
       } else if (!value && _currentDevicePresets.containsKey(instanceId)) {
         // If unchecking, revert to using preset ID
-        _instancePresets[instanceId] = _currentDevicePresets[instanceId];
+        if(_currentDevicePresets[instanceId] != -1) {
+          // If there is a preset currently active, use that
+          _instancePresets[instanceId] = _currentDevicePresets[instanceId];
+        } else {
+          // If no preset is currently active, set the first preset from list
+          _instancePresets[instanceId] = int.parse(_availablePresets[instanceId]!.keys.first);
+        }
         _oldStateJson.remove(instanceId);
       }
     });
