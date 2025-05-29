@@ -182,7 +182,7 @@ module.exports = {
 
         } catch (error) {
             console.error('Discovery error:', error);
-            res.status(500).json({ message: 'Error during autodiscovery', error: error.message });
+            res.status(500).json({ error: error.message });
         }
     },
 

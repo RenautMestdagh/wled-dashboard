@@ -45,15 +45,20 @@ class ApiService with ChangeNotifier {
 
   Future<bool> _checkHealth(showAPISuccess) async {
     try {
-      final response = await http.get(Uri.parse('$_baseUrl/health'))
-          .timeout(const Duration(seconds: 3));
+      final response = await http.get(
+        Uri.parse('$_baseUrl/health'),
+        headers: {'X-API-Key': _apiKey},
+      ).timeout(const Duration(seconds: 3));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        _isHealthy = data['status'] == 'healthy';
+        final _authenticated = data['authenticated'] ?? false;
+        _isHealthy = data['status'] == 'healthy' && _authenticated;
 
         if(_isHealthy && showAPISuccess)
           _successMessage = 'Connected to API';
+        else if(!_authenticated)
+          _errorMessage = 'API key is not valid';
 
         return _isHealthy;
       } else {
@@ -219,7 +224,7 @@ class ApiService with ChangeNotifier {
         _successMessage = "${jsonResponse['message']}\n${jsonResponse['totalFound']} instances found";
         return jsonResponse['newInstances'];
       } else {
-        _errorMessage = "${jsonResponse['message']}\n${jsonResponse['error']}";
+        _errorMessage = "${jsonResponse['error']}";
         return false;
       }
     } catch (e) {
