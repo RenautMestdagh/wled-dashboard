@@ -8,6 +8,11 @@ RUN flutter pub get && flutter build web
 FROM node:22-slim
 WORKDIR /app
 
+RUN apt update && \
+    apt install -y sudo && \
+    echo "node:nodepass" | chpasswd && \
+    adduser node sudo
+
 # Create data directory
 RUN mkdir -p /data && chown node:node /data
 
