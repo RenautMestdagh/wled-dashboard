@@ -1,11 +1,11 @@
 # Stage 1: Build Flutter web app
-FROM ghcr.io/cirruslabs/flutter:3.29.2 AS flutter-build
+FROM ghcr.io/cirruslabs/flutter:3.32.0 AS flutter-build
 WORKDIR /app/frontend
 COPY frontend/ .
 RUN flutter pub get && flutter build web
 
 # Stage 2: Build Node.js backend
-FROM node:18-alpine
+FROM node:22-slim
 WORKDIR /app
 
 # Create data directory
