@@ -5,13 +5,8 @@ COPY frontend/ .
 RUN flutter pub get && flutter build web
 
 # Stage 2: Build Node.js backend
-FROM node:22-slim
+FROM node:22-alpine
 WORKDIR /app
-
-RUN apt update && \
-    apt install -y sudo && \
-    echo "node:nodepass" | chpasswd && \
-    adduser node sudo
 
 # Create data directory
 RUN mkdir -p /data && chown node:node /data
