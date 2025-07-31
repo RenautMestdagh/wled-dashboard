@@ -72,6 +72,9 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
       // Set up the selected instances based on preset details
       for (var instance in presetDetails['instances']) {
         final instanceId = instance['instance_id'];
+        if(instanceId == null)
+          continue;
+
         _instanceSelected[instanceId] = true;
 
         // Try parsing instance['instance_preset'] to int

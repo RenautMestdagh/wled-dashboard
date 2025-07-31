@@ -53,8 +53,7 @@ db.serialize(() => {
         CREATE TABLE IF NOT EXISTS presets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
-            display_order INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            display_order INTEGER DEFAULT 0
         )
     `);
 
@@ -67,7 +66,21 @@ db.serialize(() => {
             PRIMARY KEY (preset_id, instance_id),
             FOREIGN KEY (preset_id) REFERENCES presets(id) ON DELETE CASCADE,
             FOREIGN KEY (instance_id) REFERENCES instances(id) ON DELETE CASCADE
-            )
+        )
+    `);
+
+    // Create preset_schedules table
+    db.run(`
+        CREATE TABLE IF NOT EXISTS preset_schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE,
+            cron_expression TEXT NOT NULL,
+            start_date TEXT,
+            stop_date TEXT,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            preset_id INTEGER NOT NULL,
+            FOREIGN KEY (preset_id) REFERENCES presets(id) ON DELETE CASCADE
+        )
     `);
 });
 

@@ -58,7 +58,6 @@ const getPresetDetails = async (id) => {
     return {
         id: preset.id,
         name: preset.name,
-        created_at: preset.created_at,
         instances: preset.instances ? JSON.parse(preset.instances) : []
     };
 };
@@ -88,7 +87,6 @@ module.exports = {
                 SELECT
                     p.id,
                     p.name,
-                    p.created_at,
                     p.display_order,
                     (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
                 FROM presets p
@@ -309,7 +307,6 @@ module.exports = {
              SELECT
                p.id,
                p.name,
-               p.created_at,
                p.display_order,
                (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
              FROM presets p

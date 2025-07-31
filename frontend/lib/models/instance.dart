@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 class WLEDInstance with ChangeNotifier {
   final int id;
   final String ip;
+  bool error = false;
   String name;
   bool supportsRGB;
   bool supportsWhite;
@@ -11,6 +12,7 @@ class WLEDInstance with ChangeNotifier {
   WLEDInstance({
     required this.id,
     required this.ip,
+    this.error = false,
     required this.name,
     required this.supportsRGB,
     required this.supportsWhite,
@@ -21,7 +23,8 @@ class WLEDInstance with ChangeNotifier {
     return WLEDInstance(
       id: json['id'],
       ip: json['ip'],
-      name: '',
+      error: json['error'] ?? false,
+      name: json['name'] ?? '',
       supportsRGB: false,
       supportsWhite: false,
       supportsCCT: false,

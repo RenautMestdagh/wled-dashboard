@@ -25,6 +25,7 @@ class InstanceScreen extends StatefulWidget {
 
 class _InstanceScreenState extends State<InstanceScreen> {
   String _instanceName = '';
+  bool _instanceError = false;
   bool _instanceSupportsRGB = false;
   bool _instanceSupportsWhite = false;
   bool _instanceSupportsCCT = false;
@@ -101,6 +102,7 @@ class _InstanceScreenState extends State<InstanceScreen> {
 
     setState(() {
       _instanceName = widget.instance.name;
+      _instanceError = widget.instance.error;
       _instanceSupportsRGB = widget.instance.supportsRGB;
       _instanceSupportsWhite = widget.instance.supportsWhite;
       _instanceSupportsCCT = widget.instance.supportsCCT;
@@ -448,10 +450,11 @@ class _InstanceScreenState extends State<InstanceScreen> {
       appBar: AppBar(
         title: Text(_instanceName == '' ? 'WLED' : _instanceName),
         actions: [
-          IconButton(
-            icon: Icon(Icons.power_settings_new, color: _power ? Colors.green : Colors.red),
-            onPressed: _togglePower,
-          ),
+          if(!_instanceError)
+            IconButton(
+              icon: Icon(Icons.power_settings_new, color: _power ? Colors.green : Colors.red),
+              onPressed: _togglePower,
+            ),
           IconButton(
             key: _moreButtonKey,
             icon: const Icon(Icons.more_vert),
@@ -472,239 +475,251 @@ class _InstanceScreenState extends State<InstanceScreen> {
                 constraints: BoxConstraints(
                   minHeight: constraints.maxHeight,
                 ),
-                child: IntrinsicHeight(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 8),
-                        // Brightness slider
-                        Card(
-                          elevation: 1,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-                            child: Row(
-                              children: [
-                                Icon(Icons.brightness_6, color: theme.colorScheme.primary),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: SliderTheme(
-                                    data: SliderTheme.of(context).copyWith(
-                                      trackHeight: 3.0,
-                                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-                                    ),
-                                    child: Slider(
-                                      value: _brightness,
-                                      min: 0,
-                                      max: 255,
-                                      divisions: 255,
-                                      label: _brightness.round().toString(),
-                                      onChanged: _updateBrightness,
-                                      onChangeEnd: _onBrightnessChangeEnd,
+                child: _instanceError
+                    ? Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                            'Could not communicate with the instance.\nIP: ${widget.instance.ip}',
+                            style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.red
+                            ),
+                        ),
+                      )
+                    : IntrinsicHeight(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 8),
+                              // Brightness slider
+                              Card(
+                                elevation: 1,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.brightness_6, color: theme.colorScheme.primary),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: SliderTheme(
+                                          data: SliderTheme.of(context).copyWith(
+                                            trackHeight: 3.0,
+                                            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                                          ),
+                                          child: Slider(
+                                            value: _brightness,
+                                            min: 0,
+                                            max: 255,
+                                            divisions: 255,
+                                            label: _brightness.round().toString(),
+                                            onChanged: _updateBrightness,
+                                            onChangeEnd: _onBrightnessChangeEnd,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              if (_instanceSupportsRGB) ...[
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
+                                  child: Text(
+                                    'Color',
+                                    style: theme.textTheme.titleMedium?.copyWith(
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
+                                ),
+                                Card(
+                                  elevation: 1,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Center(
+                                      child: ColorPicker(
+                                        initialColor: Color.fromRGBO(
+                                            (_colors[0][0] * 255).round(),
+                                            (_colors[0][1] * 255).round(),
+                                            (_colors[0][2] * 255).round(),
+                                            1.0
+                                        ),
+                                        scaleFactor: 1.0/_getRGBBrightness().clamp(0.001, 1.0),
+                                        onColorChanged: _updateColor,
+                                        onColorChangeEnd: _onColorChangeEnd,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+
+                              if (_instanceSupportsRGB && _instanceSupportsWhite) ...[
+                                const SizedBox(height: 12),
+                                Card(
+                                    elevation: 1,
+                                    child: Column(
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.colorize, color: theme.colorScheme.primary),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: SliderTheme(
+                                                  data: SliderTheme.of(context).copyWith(
+                                                    trackHeight: 3.0,
+                                                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                                                  ),
+                                                  child: Slider(
+                                                    value: _getRGBBrightness(),
+                                                    min: 0,
+                                                    max: 1.0,
+                                                    label: (_getRGBBrightness() * 100).toStringAsFixed(0) + "%",
+                                                    onChanged: (value) {
+                                                      setState(() {
+                                                        final maxVal = _colors[0].take(3).reduce((a, b) => a > b ? a : b);
+                                                        if (maxVal <= 0.001) {
+                                                          _colors[0][0] = value;
+                                                          _colors[0][1] = value;
+                                                          _colors[0][2] = value;
+                                                        } else {
+                                                          final factor = value / maxVal;
+                                                          for (var i = 0; i < 3; i++) {
+                                                            _colors[0][i] = (_colors[0][i] * factor).clamp(0, 1.0);
+                                                          }
+                                                        }
+                                                      });
+                                                    },
+                                                    onChangeEnd: _updateRGBBrightness,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.brightness_7, color: theme.colorScheme.primary),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: SliderTheme(
+                                                  data: SliderTheme.of(context).copyWith(
+                                                    trackHeight: 3.0,
+                                                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                                                  ),
+                                                  child: Slider(
+                                                    value: _colors[0].length > 3 ? _colors[0][3].toDouble() : 0,
+                                                    min: 0,
+                                                    max: 1.0,
+                                                    label: (_colors[0].length > 3 ? _colors[0][3] * 100 : 0).toStringAsFixed(0) + "%",
+                                                    onChanged: (value) {
+                                                      setState(() {
+                                                        if (_colors[0].length <= 3) {
+                                                          _colors[0] = [..._colors[0], value];
+                                                        } else {
+                                                          _colors[0][3] = value;
+                                                        }
+                                                      });
+                                                    },
+                                                    onChangeEnd: _updateWhiteValue,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (_instanceSupportsCCT) Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.thermostat, color: theme.colorScheme.primary),
+                                              const SizedBox(width: 12),
+                                              Expanded(
+                                                child: SliderTheme(
+                                                  data: SliderTheme.of(context).copyWith(
+                                                    trackHeight: 3.0,
+                                                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
+                                                    trackShape: CCTSliderTrackShape(),
+                                                  ),
+                                                  child: Slider(
+                                                    value: _cctValue.toDouble(),
+                                                    min: 0,
+                                                    max: 255,
+                                                    divisions: 255,
+                                                    label: _cctValue.toString(),
+                                                    onChanged: (value) {
+                                                      setState(() => _cctValue = value.toInt());
+                                                    },
+                                                    onChangeEnd: _updateCCTValue,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    )
                                 ),
                               ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        if (_instanceSupportsRGB) ...[
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4.0, bottom: 8.0),
-                            child: Text(
-                              'Color',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          Card(
-                            elevation: 1,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Center(
-                                child: ColorPicker(
-                                  initialColor: Color.fromRGBO(
-                                      (_colors[0][0] * 255).round(),
-                                      (_colors[0][1] * 255).round(),
-                                      (_colors[0][2] * 255).round(),
-                                      1.0
-                                  ),
-                                  scaleFactor: 1.0/_getRGBBrightness().clamp(0.001, 1.0),
-                                  onColorChanged: _updateColor,
-                                  onColorChangeEnd: _onColorChangeEnd,
+
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4.0, bottom: 8.0, top: 16.0),
+                                child: Text(
+                                  'Presets',
+                                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
-
-                        if (_instanceSupportsRGB && _instanceSupportsWhite) ...[
-                          const SizedBox(height: 12),
-                          Card(
-                              elevation: 1,
-                              child: Column(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.colorize, color: theme.colorScheme.primary),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: SliderTheme(
-                                            data: SliderTheme.of(context).copyWith(
-                                              trackHeight: 3.0,
-                                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-                                            ),
-                                            child: Slider(
-                                              value: _getRGBBrightness(),
-                                              min: 0,
-                                              max: 1.0,
-                                              label: (_getRGBBrightness() * 100).toStringAsFixed(0) + "%",
-                                              onChanged: (value) {
-                                                setState(() {
-                                                  final maxVal = _colors[0].take(3).reduce((a, b) => a > b ? a : b);
-                                                  if (maxVal <= 0.001) {
-                                                    _colors[0][0] = value;
-                                                    _colors[0][1] = value;
-                                                    _colors[0][2] = value;
-                                                  } else {
-                                                    final factor = value / maxVal;
-                                                    for (var i = 0; i < 3; i++) {
-                                                      _colors[0][i] = (_colors[0][i] * factor).clamp(0, 1.0);
-                                                    }
-                                                  }
-                                                });
-                                              },
-                                              onChangeEnd: _updateRGBBrightness,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.brightness_7, color: theme.colorScheme.primary),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: SliderTheme(
-                                            data: SliderTheme.of(context).copyWith(
-                                              trackHeight: 3.0,
-                                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-                                            ),
-                                            child: Slider(
-                                              value: _colors[0].length > 3 ? _colors[0][3].toDouble() : 0,
-                                              min: 0,
-                                              max: 1.0,
-                                              label: (_colors[0].length > 3 ? _colors[0][3] * 100 : 0).toStringAsFixed(0) + "%",
-                                              onChanged: (value) {
-                                                setState(() {
-                                                  if (_colors[0].length <= 3) {
-                                                    _colors[0] = [..._colors[0], value];
-                                                  } else {
-                                                    _colors[0][3] = value;
-                                                  }
-                                                });
-                                              },
-                                              onChangeEnd: _updateWhiteValue,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (_instanceSupportsCCT) Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                                    child: Row(
-                                      children: [
-                                        Icon(Icons.thermostat, color: theme.colorScheme.primary),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: SliderTheme(
-                                            data: SliderTheme.of(context).copyWith(
-                                              trackHeight: 3.0,
-                                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6.0),
-                                              trackShape: CCTSliderTrackShape(),
-                                            ),
-                                            child: Slider(
-                                              value: _cctValue.toDouble(),
-                                              min: 0,
-                                              max: 255,
-                                              divisions: 255,
-                                              label: _cctValue.toString(),
-                                              onChanged: (value) {
-                                                setState(() => _cctValue = value.toInt());
-                                              },
-                                              onChangeEnd: _updateCCTValue,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              )
-                          ),
-                        ],
-
-                        Padding(
-                          padding: const EdgeInsets.only(left: 4.0, bottom: 8.0, top: 16.0),
-                          child: Text(
-                            'Presets',
-                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        if (_devicePresets.isEmpty)
-                          const Card(
-                            child: Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: Text('No presets found on this device'),
-                            ),
-                          )
-                        else
-                          ..._devicePresets.entries.where((e) => e.value['n'] != null).map((entry) {
-                            final presetId = int.tryParse(entry.key);
-                            final isActive = presetId == _activePresetId;
-                            return Card(
-                                margin: const EdgeInsets.only(bottom: 6),
-                                elevation: isActive ? 2 : 1,
-                                color: isActive ? theme.colorScheme.primaryContainer : null,
-                                child: Material(
-                                  borderRadius: BorderRadius.circular(12), // Same border radius as ListTile
-                                  color: Colors.transparent, // Make sure background is transparent
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(12), // Same border radius for ripple
-                                    onTap: () => _applyDevicePreset(entry.key),
-                                    child: ListTile(
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                      title: Text(
-                                        entry.value['n'] ?? 'Untitled',
-                                        style: TextStyle(
-                                          color: isActive ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface,
-                                          fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                                        ),
-                                      ),
-                                      trailing: Icon(
-                                        isActive ? Icons.check_circle : Icons.play_arrow,
-                                        color: theme.colorScheme.secondary,
-                                      ),
-                                    ),
+                              if (_devicePresets.isEmpty)
+                                const Card(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: Text('No presets found on this device'),
                                   ),
                                 )
-                            );
-                          }).toList(),
-                        // Add an empty spacer at the bottom if needed
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  ),
+                              else
+                                ..._devicePresets.entries.where((e) => e.value['n'] != null).map((entry) {
+                                  final presetId = int.tryParse(entry.key);
+                                  final isActive = presetId == _activePresetId;
+                                  return Card(
+                                      margin: const EdgeInsets.only(bottom: 6),
+                                      elevation: isActive ? 2 : 1,
+                                      color: isActive ? theme.colorScheme.primaryContainer : null,
+                                      child: Material(
+                                        borderRadius: BorderRadius.circular(12), // Same border radius as ListTile
+                                        color: Colors.transparent, // Make sure background is transparent
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(12), // Same border radius for ripple
+                                          onTap: () => _applyDevicePreset(entry.key),
+                                          child: ListTile(
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                            title: Text(
+                                              entry.value['n'] ?? 'Untitled',
+                                              style: TextStyle(
+                                                color: isActive ? theme.colorScheme.onPrimaryContainer : theme.colorScheme.onSurface,
+                                                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                                              ),
+                                            ),
+                                            trailing: Icon(
+                                              isActive ? Icons.check_circle : Icons.play_arrow,
+                                              color: theme.colorScheme.secondary,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                  );
+                                }).toList(),
+                              // Add an empty spacer at the bottom if needed
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
                 ),
               ),
             ),

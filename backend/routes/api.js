@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const instancesController = require('../controllers/instances');
 const presetsController = require('../controllers/presets');
+const schedulesController = require('../controllers/schedules');
 
 // Instance routes
 router.get('/instances', instancesController.getAllInstances);
@@ -19,5 +20,12 @@ router.put('/presets/:id', presetsController.updatePreset);
 router.delete('/presets/:id', presetsController.deletePreset);
 router.post('/presets/:id/apply', presetsController.applyPreset);
 router.post('/presets/reorder', presetsController.reorderPresets);
+
+// Preset_schedules routes
+router.get('/schedules', schedulesController.getAllSchedules);
+router.get('/schedules/:id', schedulesController.getScheduleDetails);
+router.post('/schedules', schedulesController.createSchedule);
+router.put('/schedules/:id', schedulesController.updateSchedule);
+router.delete('/schedules/:id', schedulesController.deleteSchedule);
 
 module.exports = router;
