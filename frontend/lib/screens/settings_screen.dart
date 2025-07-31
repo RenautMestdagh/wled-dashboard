@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/screens/reorder_screen.dart';
+import 'package:frontend/screens/schedule_screen.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/theme_service.dart';
@@ -233,6 +234,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     title: 'TOOLS',
                     children: [
                       _buildListTile(
+                        title: 'Schedule presets',
+                        subtitle: 'Configure daily schedules',
+                        icon: Icons.access_time,
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          _urlFocusNode.unfocus();
+                          _keyFocusNode.unfocus();
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SchedulesScreen(
+                                schedules: apiService.schedules,
+                              ),
+                            ),
+                          );
+                        },
+                        isFirst: true,
+                      ),
+                      _buildListTile(
                         title: 'Autodiscover',
                         subtitle: _isDiscovering ? 'Searching for instances...' : 'Find available instances',
                         icon: Icons.radar,
@@ -267,7 +287,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             });
                           }
                         },
-                        isFirst: true,
                       ),
                       _buildListTile(
                         title: 'Reorder Instances',

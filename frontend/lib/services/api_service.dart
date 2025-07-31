@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 import '../models/instance.dart';
 import '../models/preset.dart';
+import '../models/schedule.dart';
 
 class ApiService with ChangeNotifier {
   static const String BASE_URL_KEY = 'base_url';
@@ -18,6 +19,7 @@ class ApiService with ChangeNotifier {
   List<WLEDInstance> _instances = [];
   Map<int, Map<String, dynamic>> _instanceStates = {};
   List<Preset> _presets = [];
+  List<Schedule> _schedules = [];
   String? _errorMessage;
   String? _successMessage;
   bool _isInitialized = false;
@@ -79,6 +81,7 @@ class ApiService with ChangeNotifier {
   bool get isLoading => _isLoading;
   List<WLEDInstance> get instances => _instances;
   List<Preset> get presets => _presets;
+  List<Schedule> get schedules => _schedules;
   String? get errorMessage => _errorMessage;
   String? get successMessage => _successMessage;
 
@@ -122,6 +125,7 @@ class ApiService with ChangeNotifier {
       await Future.wait([
         fetchInstances(),
         fetchPresets(),
+        // fetchSchedules(),
       ]);
 
       // After fetching instances, also fetch their states
@@ -151,7 +155,7 @@ class ApiService with ChangeNotifier {
           _errorMessage = 'Device timeout - check your connection';
           break;
         case 409:
-          _errorMessage = 'Resource already exists';
+          _errorMessage = 'Resource with this name already exists';
           break;
         case 500:
           _errorMessage = 'Server error - please try again later';
@@ -553,22 +557,179 @@ class ApiService with ChangeNotifier {
 
 
 
+  // ------------- SCHEDULES -------------
+  Future<void> fetchSchedules() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/schedules'),
+        headers: {'X-API-Key': _apiKey},
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body);
+        _schedules = data.map((json) => Schedule.fromJson(json)).toList();
+        notifyListeners();
+      } else {
+        throw response;
+      }
+    } catch (e) {
+      _schedules = [];
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> getScheduleDetails(int scheduleId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/api/schedules/$scheduleId'),
+        headers: {'X-API-Key': _apiKey},
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw response;
+      }
+    } catch (e) {
+      _handleApiError(e);
+      rethrow;
+    }
+  }
+
+  Future<void> createSchedule({
+    required String name,
+    required String cronExpression,
+    required int presetId,
+    String? startDate,
+    String? stopDate,
+    bool enabled = true,
+  }) async {
+    _isLoading = true;
+
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/api/schedules'),
+        headers: {
+          'X-API-Key': _apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'name': name,
+          'cron_expression': cronExpression,
+          'preset_id': presetId,
+          'start_date': startDate,
+          'stop_date': stopDate,
+          'enabled': enabled,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final newSchedule = Schedule.fromJson(json.decode(response.body));
+        _schedules.add(newSchedule);
+        _successMessage = 'Schedule created successfully';
+        notifyListeners();
+      } else {
+        throw response;
+      }
+    } catch (e) {
+      _handleApiError(e);
+      rethrow;
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<void> updateSchedule({
+    required int scheduleId,
+    String? name,
+    String? cronExpression,
+    int? presetId,
+    String? startDate,
+    String? stopDate,
+    bool? enabled,
+  }) async {
+    _isLoading = true;
+
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/api/schedules/$scheduleId'),
+        headers: {
+          'X-API-Key': _apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: json.encode({
+          'name': name,
+          'cron_expression': cronExpression,
+          'preset_id': presetId,
+          'start_date': startDate,
+          'stop_date': stopDate,
+          'enabled': enabled,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final index = _schedules.indexWhere((schedule) => schedule.id == scheduleId);
+        if (index == -1) {
+          throw Exception('Schedule not found for id: $scheduleId');
+        }
+
+        _schedules[index] = Schedule.fromJson(json.decode(response.body));
+        _successMessage = 'Schedule updated successfully';
+        notifyListeners();
+      } else {
+        throw response;
+      }
+    } catch (e) {
+      _handleApiError(e);
+      rethrow;
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+  Future<void> deleteSchedule(int scheduleId) async {
+    _isLoading = true;
+
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/api/schedules/$scheduleId'),
+        headers: {'X-API-Key': _apiKey},
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        _schedules.removeWhere((s) => s.id == scheduleId);
+        _successMessage = 'Schedule deleted successfully';
+        notifyListeners();
+      } else {
+        throw response;
+      }
+    } catch (e) {
+      _handleApiError(e);
+      rethrow;
+    } finally {
+      _isLoading = false;
+    }
+  }
+
+
+
   // ------------- DEVICE -------------
   Future<void> getDeviceInfo(int instanceId) async {
     try {
+      final instance = _instances.firstWhere(
+            (instance) => instance.id == instanceId,
+        orElse: () => throw Exception('Instance not found'),
+      );
+
       final response = await http.get(
         Uri.parse('$_baseUrl/wled/$instanceId/info'),
         headers: {'X-API-Key': _apiKey},
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-
-        final instance = _instances.firstWhere(
-              (instance) => instance.id == instanceId,
-          orElse: () => throw Exception('Instance not found'),
-        );
         final data = json.decode(response.body);
-        instance.name = data['name']; // Use the new method
+        if(instance.name == '')
+          instance.name = data['name'];
 
         // Assuming 'data' is a Map<String, dynamic> containing the light info
         final lc = data['leds']['lc'] as int; // Extract the capability byte
@@ -576,13 +737,13 @@ class ApiService with ChangeNotifier {
         instance.supportsRGB = (lc & 0x01) != 0;  // Check if bit 0 is set (RGB support)
         instance.supportsWhite = (lc & 0x02) != 0;  // Check if bit 1 is set (White channel)
         instance.supportsCCT = (lc & 0x04) != 0;  // Check if bit 2 is set (CCT support)
-
       } else {
+        instance.error = true;
         throw response;
       }
     } catch (e) {
       _handleApiError(e);
-      rethrow;
+      // rethrow;
     }
   }
 
