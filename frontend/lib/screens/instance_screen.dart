@@ -314,6 +314,10 @@ class _InstanceScreenState extends State<InstanceScreen> {
         "on": true,
         'seg': {
           'col': colorsForApi,
+          // choosing a color removes applied effect
+          "fx": 0,
+          "sx": 128,
+          "ix": 128,
         },
       });
 

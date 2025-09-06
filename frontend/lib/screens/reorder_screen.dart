@@ -1,5 +1,8 @@
+import 'dart:ui';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Add this import for HapticFeedback
 import 'package:provider/provider.dart';
 import '../models/instance.dart';
 import '../models/preset.dart';
@@ -68,6 +71,51 @@ class _ReorderScreenState extends State<ReorderScreen> {
     }
   }
 
+  // Helper method to build a card for an item
+  Widget _buildCard(dynamic item, BuildContext context, {double elevation = 2, double scale = 1.0}) {
+    final theme = Theme.of(context);
+    final name = widget.isInstances ? (item as WLEDInstance).name : (item as Preset).name;
+    final displayName = name.isNotEmpty ? name : (widget.isInstances ? 'Instance ${item.id}' : 'Preset ${item.id}');
+
+    return Transform.scale(
+      scale: scale,
+      child: Card(
+        elevation: elevation,
+        margin: const EdgeInsets.symmetric(vertical: 5.0),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10.0),
+        ),
+        color: theme.colorScheme.surface,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: ListTile(
+            trailing: kIsWeb ? null : const Icon(Icons.drag_handle),
+            title: Text(
+              displayName,
+              style: TextStyle(color: theme.colorScheme.onSurface),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget proxyDecorator(Widget child, int index, Animation<double> animation) {
+    final item = _orderedItems[index];
+
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (BuildContext context, Widget? child) {
+        final double animValue = Curves.easeInOut.transform(animation.value);
+        final double elevation = lerpDouble(2, 6, animValue)!;
+        final double scale = lerpDouble(1, 1.04, animValue)!;
+
+        return _buildCard(item, context, elevation: elevation, scale: scale);
+      },
+      child: child,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -78,53 +126,44 @@ class _ReorderScreenState extends State<ReorderScreen> {
         actions: [
           _isSaving
               ? const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                    ),
-                  ),
-                )
+            padding: EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+              ),
+            ),
+          )
               : TextButton(
-                  onPressed: _saveOrder,
-                  child: Text(
-                    'Save',
-                    style: TextStyle(
-                      color: theme.colorScheme.primary,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
+            onPressed: _saveOrder,
+            child: Text(
+              'Save',
+              style: TextStyle(
+                color: theme.colorScheme.primary,
+                fontSize: 17,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
       body: ReorderableListView(
         padding: const EdgeInsets.all(16.0),
         physics: const ClampingScrollPhysics(),
+        onReorderStart: (index) {
+          HapticFeedback.vibrate();
+        },
+        onReorderEnd: (index) {
+          HapticFeedback.vibrate();
+        },
         onReorder: _onReorder,
+        proxyDecorator: proxyDecorator,
         children: _orderedItems.asMap().entries.map((entry) {
           final item = entry.value;
-          final name = widget.isInstances ? (item as WLEDInstance).name : (item as Preset).name;
-
-          return Card(
+          return Container(
             key: ValueKey(item.id),
-            elevation: 5,
-            margin: const EdgeInsets.symmetric(vertical: 5.0),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10.0),
-            ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 2),
-              child: ListTile(
-                trailing: kIsWeb ? null : const Icon(Icons.drag_handle),
-                title: Text(
-                  name.isNotEmpty ? name : (widget.isInstances ? 'Instance ${item.id}' : 'Preset ${item.id}'),
-                  style: TextStyle(color: theme.colorScheme.onSurface),
-                ),
-              ),
-            ),
+            child: _buildCard(item, context),
           );
         }).toList(),
       ),

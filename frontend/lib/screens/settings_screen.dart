@@ -4,6 +4,8 @@ import 'package:frontend/screens/schedule_screen.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../services/theme_service.dart';
+import '../services/wled_discovery_service.dart';
+import '../widgets/discovery_animation.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -19,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late final FocusNode _urlFocusNode;
   late final FocusNode _keyFocusNode;
   bool _obscureApiKey = true;
+  late final WLEDDiscoveryService _discoveryService;
 
   @override
   void initState() {
@@ -28,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _keyController = TextEditingController(text: apiService.apiKey);
     _urlFocusNode = FocusNode();
     _keyFocusNode = FocusNode();
+    _discoveryService = WLEDDiscoveryService(apiService);
   }
 
   @override
@@ -36,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _keyController.dispose();
     _urlFocusNode.dispose();
     _keyFocusNode.dispose();
+    _discoveryService.dispose();
     super.dispose();
   }
 
@@ -80,8 +85,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     VoidCallback? onTap,
     bool isFirst = false,
     bool isLast = false,
+    bool enabled = true,
   }) {
     final theme = Theme.of(context);
+
     return Material(
       color: Colors.transparent,
       child: Column(
@@ -93,17 +100,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             color: theme.colorScheme.surfaceContainerHighest,
           ),
           InkWell(
-            onTap: onTap,
+            onTap: enabled ? onTap : null,
             borderRadius: BorderRadius.vertical(
               top: isFirst ? const Radius.circular(12) : Radius.zero,
               bottom: isLast ? const Radius.circular(12) : Radius.zero,
             ),
-            child: ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              leading: Icon(icon, size: 24),
-              title: Text(title),
-              subtitle: subtitle != null ? Text(subtitle) : null,
-              trailing: trailing,
+            child: Opacity(
+              opacity: enabled ? 1.0 : 0.6,
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: Icon(icon, size: 24),
+                title: Text(title),
+                subtitle: subtitle != null ? Text(subtitle) : null,
+                trailing: trailing,
+              ),
             ),
           ),
         ],
@@ -113,6 +123,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isMdnsSupported = _discoveryService.isMdnsSupported;
+    final String capabilityMessage = _discoveryService.capabilityMessage;
 
     return Scaffold(
       appBar: AppBar(
@@ -254,18 +266,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       _buildListTile(
                         title: 'Autodiscover',
-                        subtitle: _isDiscovering ? 'Searching for instances...' : 'Find available instances',
+                        enabled: isMdnsSupported,
+                        subtitle: _isDiscovering
+                            ? 'Searching for instances...'
+                            : isMdnsSupported
+                            ? 'Find available instances'
+                            : capabilityMessage,
                         icon: Icons.radar,
-                        trailing: _isDiscovering
-                            ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                            : const Icon(Icons.chevron_right),
-                        onTap: _isDiscovering
-                            ? null
-                            : () async {
+                        trailing: DiscoveryAnimationWidget(isDiscovering: _isDiscovering),
+                        onTap: isMdnsSupported
+                            ? () async {
+                          if(_isDiscovering)
+                            return;
+
                           _urlFocusNode.unfocus();
                           _keyFocusNode.unfocus();
                           setState(() {
@@ -275,18 +288,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           apiService.clearMessages();
 
                           try {
-                            final bool newInstances = await apiService.autodiscoverInstances();
-                            if (newInstances) {
-                              await apiService.fetchData();
-                            }
+                            // Start discovery and wait for it to complete
+                            String result = await _discoveryService.discoverWLEDDevices();
+                            apiService.setSuccessMessage(result);
                           } catch (e) {
-                            // Errors are already handled in updateSettings
+                            apiService.setErrorMessage('Discovery failed: $e');
                           } finally {
                             setState(() {
                               _isDiscovering = false;
                             });
                           }
-                        },
+                        }
+                            : null, // Disable if not supported
                       ),
                       _buildListTile(
                         title: 'Reorder Instances',

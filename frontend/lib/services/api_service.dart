@@ -179,17 +179,20 @@ class ApiService with ChangeNotifier {
   void setSuccessMessage(String message) {
     _errorMessage = null;
     _successMessage = message;
+    notifyListeners();
   }
 
   void setErrorMessage(String message) {
     _successMessage = null;
     _errorMessage = message;
+    notifyListeners();
   }
 
   void clearMessages() {
     if (_errorMessage != null || _successMessage != null) {
       _errorMessage = null;
       _successMessage = null;
+      notifyListeners();
     }
   }
 
@@ -216,29 +219,29 @@ class ApiService with ChangeNotifier {
     }
   }
 
-  Future<bool> autodiscoverInstances() async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/api/instances/autodiscover'),
-        headers: {'X-API-Key': _apiKey},
-      ).timeout(const Duration(seconds: 10));
+  // Future<bool> autodiscoverInstances() async {
+  //   try {
+  //     final response = await http.post(
+  //       Uri.parse('$_baseUrl/api/instances/autodiscover'),
+  //       headers: {'X-API-Key': _apiKey},
+  //     ).timeout(const Duration(seconds: 10));
+  //
+  //     Map<String, dynamic> jsonResponse = json.decode(response.body);
+  //     if (response.statusCode == 200) {
+  //       _successMessage = "${jsonResponse['message']}\n${jsonResponse['totalFound']} ${jsonResponse['totalFound'] == 1 ? 'instance' : 'instances'} found";
+  //       return jsonResponse['newInstances'];
+  //     } else {
+  //       _errorMessage = "${jsonResponse['error']}";
+  //       return false;
+  //     }
+  //   } catch (e) {
+  //     rethrow; // Re-throw to be handled by the caller
+  //   } finally {
+  //     notifyListeners();
+  //   }
+  // }
 
-      Map<String, dynamic> jsonResponse = json.decode(response.body);
-      if (response.statusCode == 200) {
-        _successMessage = "${jsonResponse['message']}\n${jsonResponse['totalFound']} ${jsonResponse['totalFound'] == 1 ? 'instance' : 'instances'} found";
-        return jsonResponse['newInstances'];
-      } else {
-        _errorMessage = "${jsonResponse['error']}";
-        return false;
-      }
-    } catch (e) {
-      rethrow; // Re-throw to be handled by the caller
-    } finally {
-      notifyListeners();
-    }
-  }
-
-  Future<WLEDInstance> createInstance(String ip, String name) async {
+  Future<WLEDInstance> createInstance(String ip, String name, {bool fromAutodiscover = false}) async {
     _isLoading = true;
 
     try {
@@ -257,7 +260,10 @@ class ApiService with ChangeNotifier {
       if (response.statusCode == 201 || response.statusCode == 200) {
         final newInstance = WLEDInstance.fromJson(json.decode(response.body));
         _instances.add(newInstance);
-        _successMessage = 'Instance created successfully';
+
+        if(!fromAutodiscover)
+          _successMessage = 'Instance created successfully';
+
         return newInstance;
       } else {
         throw response;
