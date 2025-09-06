@@ -96,95 +96,95 @@ module.exports = {
         }
     },
 
-    autoDiscoverInstances: async (req, res) => {
-        try {
-            // Array to store discovered WLED devices
-            const wledDevices = [];
-
-            // Create an mDNS instance
-            const mdns = MulticastDNS();
-
-            // Handle response packets
-            mdns.on('response', async (packet) => {
-                // Process answers and additionals for SRV and A records
-                const records = [...(packet.answers || []), ...(packet.additionals || [])];
-
-                for (const record of records) {
-                    if (record.type === 'SRV') {
-                        const port = record.data.port;
-                        const target = record.data.target;
-
-                        // Find corresponding A record for IP
-                        const aRecord = records.find(
-                            (r) => r.name === target && r.type === 'A'
-                        );
-
-                        if (aRecord && aRecord.data) {
-                            const ip = aRecord.data;
-
-                            // Verify if it's a WLED device by querying /json/info
-                            try {
-                                const response = await get(`http://${ip}:${port}/json/info`, {
-                                    timeout: 2000, // 2-second timeout for API request
-                                });
-
-                                if (response.status === 200 && response.data.ver) {
-                                    wledDevices.push({
-                                        ip: ip,
-                                    });
-                                }
-                            } catch (error) {
-                                console.log(`Skipping ${ip}: Not a valid WLED device or unreachable`);
-                            }
-                        }
-                    }
-                }
-            });
-
-            // Query for _http._tcp.local services
-            mdns.query({
-                questions: [
-                    {
-                        name: '_http._tcp.local',
-                        type: 'PTR',
-                    },
-                ],
-            });
-
-            // Stop discovery after 5 seconds and send response
-            setTimeout(async () => {
-                mdns.destroy();
-
-                // Process each discovered device
-                let newInstances = false;
-                for (const device of wledDevices) {
-                    try {
-                        // Check if device already exists
-                        const existingInstance = await dbGet("SELECT id FROM instances WHERE ip = ?", [device.ip]);
-
-                        if (!existingInstance) {
-                            // Add new device using our new helper function
-                            await addInstance(device.ip, '');
-                            newInstances = true;
-                        }
-                    } catch (error) {
-                        console.error(`Error processing device ${device.ip}:`, error);
-                    }
-                }
-
-                res.status(200).json({
-                    message: 'WLED device discovery completed',
-                    totalFound: wledDevices.length,
-                    newInstances: newInstances,
-                });
-
-            }, 2500);
-
-        } catch (error) {
-            console.error('Discovery error:', error);
-            res.status(500).json({ error: error.message });
-        }
-    },
+    // autoDiscoverInstances: async (req, res) => {
+    //     try {
+    //         // Array to store discovered WLED devices
+    //         const wledDevices = [];
+    //
+    //         // Create an mDNS instance
+    //         const mdns = MulticastDNS();
+    //
+    //         // Handle response packets
+    //         mdns.on('response', async (packet) => {
+    //             // Process answers and additionals for SRV and A records
+    //             const records = [...(packet.answers || []), ...(packet.additionals || [])];
+    //
+    //             for (const record of records) {
+    //                 if (record.type === 'SRV') {
+    //                     const port = record.data.port;
+    //                     const target = record.data.target;
+    //
+    //                     // Find corresponding A record for IP
+    //                     const aRecord = records.find(
+    //                         (r) => r.name === target && r.type === 'A'
+    //                     );
+    //
+    //                     if (aRecord && aRecord.data) {
+    //                         const ip = aRecord.data;
+    //
+    //                         // Verify if it's a WLED device by querying /json/info
+    //                         try {
+    //                             const response = await get(`http://${ip}:${port}/json/info`, {
+    //                                 timeout: 2000, // 2-second timeout for API request
+    //                             });
+    //
+    //                             if (response.status === 200 && response.data.ver) {
+    //                                 wledDevices.push({
+    //                                     ip: ip,
+    //                                 });
+    //                             }
+    //                         } catch (error) {
+    //                             console.log(`Skipping ${ip}: Not a valid WLED device or unreachable`);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         });
+    //
+    //         // Query for _http._tcp.local services
+    //         mdns.query({
+    //             questions: [
+    //                 {
+    //                     name: '_http._tcp.local',
+    //                     type: 'PTR',
+    //                 },
+    //             ],
+    //         });
+    //
+    //         // Stop discovery after 5 seconds and send response
+    //         setTimeout(async () => {
+    //             mdns.destroy();
+    //
+    //             // Process each discovered device
+    //             let newInstances = false;
+    //             for (const device of wledDevices) {
+    //                 try {
+    //                     // Check if device already exists
+    //                     const existingInstance = await dbGet("SELECT id FROM instances WHERE ip = ?", [device.ip]);
+    //
+    //                     if (!existingInstance) {
+    //                         // Add new device using our new helper function
+    //                         await addInstance(device.ip, '');
+    //                         newInstances = true;
+    //                     }
+    //                 } catch (error) {
+    //                     console.error(`Error processing device ${device.ip}:`, error);
+    //                 }
+    //             }
+    //
+    //             res.status(200).json({
+    //                 message: 'WLED device discovery completed',
+    //                 totalFound: wledDevices.length,
+    //                 newInstances: newInstances,
+    //             });
+    //
+    //         }, 2500);
+    //
+    //     } catch (error) {
+    //         console.error('Discovery error:', error);
+    //         res.status(500).json({ error: error.message });
+    //     }
+    // },
 
     createInstance: async (req, res) => {
         const { ip, name } = req.body;
