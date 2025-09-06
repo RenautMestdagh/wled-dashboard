@@ -77,14 +77,26 @@ class _HomeScreenState extends State<HomeScreen> {
                 SnackBar(
                   content: Text(apiService.errorMessage!),
                   backgroundColor: Colors.red,
+                  shape: Border(
+                    top: BorderSide(
+                      color: Colors.red.shade800,
+                      width: 2.0,
+                    ),
+                  ),
                 ),
               );
             } else if (apiService.successMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(apiService.successMessage!),
-                  backgroundColor: Colors.green,
-                ),
+                  SnackBar(
+                    content: Text(apiService.successMessage!),
+                    backgroundColor: Colors.green,
+                    shape: Border(
+                      top: BorderSide(
+                        color: Colors.green.shade800,
+                        width: 2.0,
+                      ),
+                    ),
+                  )
               );
             }
             // Clear messages after showing
