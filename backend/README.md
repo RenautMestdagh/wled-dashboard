@@ -1,123 +1,108 @@
 # WLED Control Backend API
 
-A secure Node.js backend API for managing and controlling multiple WLED LED devices, enabling one-click control through presets.
+A Node.js API for secure management of WLED devices, presets, and schedules. It proxies commands to devices and automates via cron.
 
-## Table of Contents
+## Features (Backend-Specific)
 
-- [Features](#features)
-- [API Endpoints](#api-endpoints)
-- [Error Handling](#error-handling)
-- [Database Schema](#database-schema)
-- [Environment Variables](#environment-variables)
-- [Setup](#setup)
-
-## Features
-
-- **One-Click Control**: Apply presets to multiple WLED devices via a single API call.
-- **Instance Management**: Add, update, reorder, or delete WLED devices.
-- **Preset Management**: Create, edit, and apply lighting presets.
-- **Scheduling**: Automate presets with cron-based schedules.
-- **Security**: API key authentication and CORS configuration.
-- **Reliability**: Input validation, rate limiting, and transaction-based database updates.
+- **Proxying**: Forwards state changes to WLED IPs (e.g., `/json/state` endpoint).
+- **Database**: SQLite for persistent storage of instances, presets, and schedules.
+- **Validation**: IP checks, WLED compatibility tests, cron validation.
+- **Automation**: `node-cron` for scheduling preset applications.
+- **Security**: Rate limiting, helmet for headers, API key auth.
 
 ## API Endpoints
 
-### Base URL
-`http://your-server:3000`
+Base: `http://your-server:3000`. Auth: `X-API-Key` header/query.
 
-### Authentication
-All endpoints require an `X-API-Key` header or `apiKey` query parameter.
+### Instances
+- `GET /api/instances`: List ordered instances.
+- `POST /api/instances`: Create (validates IP/WLED).
+- `PUT /api/instances/{id}`: Update IP/name.
+- `DELETE /api/instances/{id}`: Delete (cleans orphans).
+- `POST /api/instances/reorder`: Reorder via IDs.
 
-### Instance Management
-- **Get All Instances**: `GET /api/instances`
-  - Returns: List of instances sorted by `display_order`.
-- **Create Instance**: `POST /api/instances`
-  - Body: `{ "ip": "192.168.1.100", "name": "Living Room" }`
-  - Validates IP and checks for WLED compatibility.
-- **Update Instance**: `PUT /api/instances/{id}`
-  - Body: Partial updates for `ip` or `name`.
-- **Delete Instance**: `DELETE /api/instances/{id}`
-- **Reorder Instances**: `POST /api/instances/reorder`
-  - Body: `{ "orderedIds": [3, 1, 2] }`
-  - Updates `display_order` for instances.
+### Presets
+- `GET /api/presets`: List ordered presets.
+- `GET /api/presets/{id}`: Details with instances.
+- `POST /api/presets`: Create (unique name, valid instances).
+- `PUT /api/presets/{id}`: Update name/instances.
+- `DELETE /api/presets/{id}`: Delete.
+- `POST /api/presets/{id}/apply`: Apply to devices.
+- `POST /api/presets/reorder`: Reorder via IDs.
 
-### Preset Management
-- **Get All Presets**: `GET /api/presets`
-  - Returns: List of presets sorted by `display_order`.
-- **Get Preset Details**: `GET /api/presets/{id}`
-  - Returns: Preset with associated instances and settings.
-- **Create Preset**: `POST /api/presets`
-  - Body: `{ "name": "Relaxing", "instances": [{ "instance_id": 1, "instance_preset": 1 }] }`
-  - Ensures unique name and valid instances.
-- **Update Preset**: `PUT /api/presets/{id}`
-  - Body: Updates name or instance associations.
-- **Delete Preset**: `DELETE /api/presets/{id}`
-- **Apply Preset**: `POST /api/presets/{id}/apply`
-  - Applies preset to associated devices.
-- **Reorder Presets**: `POST /api/presets/reorder`
-  - Body: `{ "orderedIds": [3, 1, 2] }`
+### Schedules
+- `GET /api/schedules`: List with presets.
+- `GET /api/schedules/{id}`: Details.
+- `POST /api/schedules`: Create (valid cron).
+- `PUT /api/schedules/{id}`: Update (clear dates with "CLEAR").
+- `DELETE /api/schedules/{id}`: Delete (stops cron).
 
-### Schedule Management
-- **Get All Schedules**: `GET /api/schedules`
-  - Returns: List of schedules with preset details.
-- **Get Schedule Details**: `GET /api/schedules/{id}`
-- **Create Schedule**: `POST /api/schedules`
-  - Body: `{ "name": "Daily Lights", "cron_expression": "0 0 8 * * *", "preset_id": 1 }`
-  - Validates cron expression.
-- **Update Schedule**: `PUT /api/schedules/{id}`
-  - Body: Partial updates; use `"CLEAR"` for optional fields.
-- **Delete Schedule**: `DELETE /api/schedules/{id}`
-  - Stops associated cron job.
-
-### WLED Device Interaction
-- **Get Device Presets**: `GET /wled/{instanceId}/presets.json`
-- **Get Device State**: `GET /wled/{instanceId}/state`
-- **Set Device State**: `POST /wled/{instanceId}/state`
-  - Body: `{ "on": true, "bri": 200 }` or `{ "ps": 1 }`
-- **Get Device Info**: `GET /wled/{instanceId}/info`
+### WLED Proxy
+- `GET /wled/{id}/presets.json`: Device presets.
+- `GET /wled/{id}/state`: State.
+- `POST /wled/{id}/state`: Set state (JSON body).
+- `GET /wled/{id}/info`: Info.
 
 ## Error Handling
 
-| Code | Status       | Description                     |
-|------|--------------|---------------------------------|
-| 400  | Bad Request  | Invalid input                   |
-| 401  | Unauthorized | Invalid/missing API key         |
-| 404  | Not Found    | Resource not found              |
-| 408  | Timeout      | Device not responding           |
-| 409  | Conflict     | Resource already exists         |
-| 500  | Server Error | Internal error                  |
-| 502  | Bad Gateway  | WLED communication error        |
+| Code | Description | Example |
+|------|-------------|---------|
+| 400  | Invalid input | Bad IP/cron. |
+| 401  | Unauthorized | Missing key. |
+| 404  | Not found | Invalid ID. |
+| 408  | Timeout | Device offline. |
+| 409  | Conflict | Duplicate name. |
+| 500  | Server error | DB failure. |
+| 502  | Bad gateway | WLED comms fail. |
 
 ## Database Schema
 
-- **instances**: `(id, ip, name, display_order, last_seen)`
-- **presets**: `(id, name, display_order)`
-- **preset_instances**: `(preset_id, instance_id, instance_preset)`
-- **preset_schedules**: `(id, name, cron_expression, start_date, stop_date, enabled, preset_id)`
+- **instances**: id, ip (unique), name, display_order, last_seen.
+- **presets**: id, name (unique), display_order.
+- **preset_instances**: preset_id, instance_id, instance_preset (JSON/state).
+- **preset_schedules**: id, name (unique), cron_expression, start_date, stop_date, enabled, preset_id.
+
+
+```mermaid
+erDiagram
+    instances ||--o{ preset_instances : has
+    presets ||--o{ preset_instances : has
+    presets ||--o{ preset_schedules : has
+```
 
 ## Environment Variables
 
-```bash
+```env
 PORT=3000
 NODE_ENV=production
 DB_PATH=/data/database.db
-API_KEYS=your-secure-api-key-123
+API_KEYS=your-key-123
 ALLOWED_ORIGINS=mydomain.com
 ```
 
 ## Setup
 
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Create a `.env` file with the above variables.
-4. Start the server:
-   ```bash
-   node server.js
-   ```
-5. Verify with: `GET /health`
+(Refer to main README for cloning.)
+
+1. Navigate: `cd backend`.
+2. Install: `npm install`.
+3. Config: Create `.env`.
+4. Run: `node server.js`.
+5. Health: `GET /health`.
+
+## Key Functionalities Explained
+
+- **server.js**: Entry point; sets up Express, middleware (CORS, helmet, auth), routes, and cron init.
+- **api.js / wled.js**: Route definitions for instances/presets/schedules/WLED proxy.
+- **instances.js / presets.js / schedules.js**: Controllers with DB queries, validation, transactions.
+- **cronManager.js**: Manages cron jobs; starts/stops based on schedules, applies presets.
+- **database.js**: Initializes SQLite schema with foreign keys.
+- **controllers/wled.js**: WLED-specific commands (state get/set, presets fetch).
+
+## Troubleshooting/FAQ
+
+- **DB Errors**: Check `DB_PATH` permissions; run in production mode.
+- **Cron Fails**: Validate expressions; check server time zone.
+- **WLED Offline**: Ensure devices respond to `/json/info`.
+- **Auth Issues**: Verify `API_KEYS` format (comma-separated).
+- **CORS**: Update `ALLOWED_ORIGINS` for frontend access.

@@ -1,110 +1,69 @@
 # WLED Dashboard Frontend
 
-A Flutter-based, cross-platform app for controlling WLED LED devices via a secure backend API. Designed for iOS, Android, and web, it enables users to manage multiple devices with a single button press using presets.
+A Flutter app for controlling WLED devices via the backend API. It supports iOS, Android, and web, focusing on intuitive preset application and device management.
 
-## Table of Contents
+## Features (Frontend-Specific)
 
-- [Features](#features)
-- [Screenshots](#screenshots)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Configuration](#configuration)
-- [Architecture](#architecture)
-- [Dependencies](#dependencies)
-- [Troubleshooting](#troubleshooting)
-
-## Features
-
-- **One-Tap Control**: Apply presets to multiple WLED devices instantly.
-- **Device Management**: Add, edit, reorder, or delete WLED instances.
-- **Preset System**: Create, edit, and apply custom lighting presets.
-- **Scheduling**: Automate presets with cron-based schedules.
-- **Real-Time Controls**: Adjust power, brightness, colors, and CCT.
-- **Device Discovery**: Auto-detect WLED devices on the local network (mobile/desktop only).
-- **Responsive UI**: Material 3 design with light/dark themes and haptic feedback.
-- **Performance**: Caches device states to minimize API calls.
+- **UI Components**: Tabbed navigation for presets, instances, and settings. Each instance screen offers sliders for brightness/CCT, color pickers, and preset lists.
+- **State Management**: Uses Provider to cache device states, reducing API calls and enabling offline-like responsiveness.
+- **Discovery**: mDNS-based auto-detection on mobile/desktop (via `multicast_dns`); not on web due to browser limits.
+- **Theming**: Light/dark modes with custom colors; haptic feedback for interactions.
+- **Performance**: Refresh indicators, loading states, and error handling for smooth UX.
 
 ## Screenshots
 
-| Home Screen | Instance Control | Create Preset |
-|-------------|------------------|---------------|
-| ![Home Screen](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/home_screen.jpg?raw=true) | ![Instance Control](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/instance_control.jpg?raw=true) | ![Create Preset](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/preset_edit.jpg?raw=true) |
+| Home Screen | Instance Control | Preset Edit |
+|-------------|------------------|-------------|
+| ![Home Screen](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/home_screen.jpg?raw=true) | ![Instance Control](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/instance_control.jpg?raw=true) | ![Preset Edit](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/preset_edit.jpg?raw=true) |
 
-| Schedules | Settings | Reorder Interface |
-|-----------|----------|-------------------|
-| ![Schedules](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/schedule.jpg?raw=true) | ![Settings](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/settings.jpg?raw=true) | ![Reorder Interface](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/reorder.jpg?raw=true) |
+| Schedules | Settings | Reorder |
+|-----------|----------|---------|
+| ![Schedules](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/schedule.jpg?raw=true) | ![Settings](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/settings.jpg?raw=true) | ![Reorder](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/reorder.jpg?raw=true) |
+
+**Suggested Pictures**: Add GIFs showing interactions, e.g., applying a preset (record via screen capture tools like Kap or LiceCap). Also, include web-specific screenshots to highlight responsiveness.
 
 ## Installation
 
-### Prerequisites
-- Flutter SDK (3.0+ recommended).
-- Dart SDK (included with Flutter).
-- Android Studio/Xcode for mobile builds.
-- Running [WLED Control Backend API](../backend/README.md).
+(Refer to main README for prerequisites/cloning.)
 
-### Steps
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
-3. Run the app:
-   - Development: `flutter run` (select device/emulator).
-   - Web: `flutter run -d chrome`.
-   - Release: `flutter build apk` (Android) or `flutter build ios` (iOS).
-4. For web builds: `flutter build web` and serve the `build/web` directory.
+1. Navigate: `cd frontend`.
+2. Install deps: `flutter pub get`.
+3. Run: `flutter run` (or `flutter run -d chrome` for web).
+4. Build: `flutter build apk` (Android), `flutter build ios` (iOS), or `flutter build web` (serve `build/web`).
 
 ## Usage
 
-1. Open the app and go to Settings to set the backend API URL (e.g., `http://your-server:3000`) and API key.
-2. Add WLED devices via auto-discovery or manually in the Instances tab.
-3. Create presets in the Presets tab to configure multiple devices.
-4. Apply presets with a single tap or schedule them in the Schedules tab.
-5. Use the Instances tab for individual device controls (power, brightness, colors).
+- **Settings**: Configure API URL/key; toggle themes.
+- **Instances**: Swipe to refresh states; adjust power/brightness/colors per device.
+- **Presets**: Create/edit (assign states to instances); tap to apply.
+- **Schedules**: View/edit cron-based automations.
+
+Pull-to-refresh for data sync.
 
 ## Configuration
 
-- **API Settings**: Set in-app via Settings > API Configuration, stored in `shared_preferences`.
-- **Theme**: Choose system, light, or dark mode in Settings.
-- **Discovery**: Enabled on mobile/desktop; not available on web due to mDNS limitations.
-- **Custom Colors**: Defined in `main.dart` for light/dark themes.
+- API settings stored in `shared_preferences`.
+- Custom colors/themes in `main.dart`.
+- Discovery limited to supported platforms.
 
-## Architecture
+## Key Functionalities Explained
 
-- **State Management**: Uses Provider for API, theme, and data caching.
-- **Networking**: HTTP requests via the `http` package to the backend API.
-- **UI Framework**: Material 3 with custom themes.
-- **Key Files**:
-  - `main.dart`: App entry, splash screen, providers.
-  - `api_service.dart`: API communication and state handling.
-  - `home_screen.dart`: Tabbed interface for navigation.
-  - `instance_screen.dart`: Device control UI.
-  - `presets_screen.dart`: Preset creation and management.
-  - `schedule_screen.dart`: Schedule management UI.
-  - `settings_screen.dart`: API and theme configuration.
-  - `wled_discovery_service.dart`: mDNS device discovery.
+- **api_service.dart**: Central hub for HTTP requests, caching states (e.g., `_instanceStates`), and notifying UI changes.
+- **home_screen.dart**: Manages tabs; master power toggle checks/updates all instances.
+- **instance_screen.dart**: Fetches device info/presets; updates states in real-time (e.g., color pickers merge changes).
+- **presets_screen.dart**: Lists presets; handles apply/edit/delete with confirmations.
+- **settings_screen.dart**: Form for API config; reorder screens for instances/presets.
+- **wled_discovery_service.dart**: Uses MDnsClient to scan/discover/verify WLED devices.
 
 ## Dependencies
 
-- `flutter`: Core framework.
-- `provider`: State management.
-- `http`: API communication.
-- `shared_preferences`: Local storage.
-- `flutter_native_splash`: Splash screen.
-- `multicast_dns`: Device discovery.
-- Full list: See `pubspec.yaml`.
+See `pubspec.yaml`. Key: `provider` (state), `http` (API), `shared_preferences` (storage), `multicast_dns` (discovery).
 
-Update dependencies with:
-```bash
-flutter pub upgrade
-```
+Update: `flutter pub upgrade`.
 
-## Troubleshooting
+## Troubleshooting/FAQ
 
-- **API Connection**: Ensure the backend is running and the API key is correct. Check logs with `flutter run -v`.
-- **Discovery Issues**: Verify devices are on the same network; mDNS may require permissions.
-- **State Not Updating**: Use pull-to-refresh or the app bar refresh button.
-- **Web Limitations**: No mDNS or haptic feedback; ensure CORS is configured in the backend.
+- **API Errors**: Check backend logs; ensure key matches `.env`.
+- **Discovery Fails**: Same network? Permissions granted? Web unsupported.
+- **State Not Syncing**: Use refresh button; check network.
+- **Build Issues**: Ensure Flutter version >=3.0; clean with `flutter clean`.
