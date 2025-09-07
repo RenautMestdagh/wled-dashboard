@@ -17,7 +17,7 @@ A secure Node.js API for managing and controlling multiple WLED LED devices, ena
 - [Setup](#setup)
 - [Troubleshooting/FAQ](#troubleshootingfaq)
 
-## Features
+## Features (Backend-Specific)
 
 - **Device Proxying**: Forwards commands to WLED devices (e.g., `/json/state` for state changes).
 - **SQLite Database**: Stores instances, presets, and schedules with foreign key constraints.
