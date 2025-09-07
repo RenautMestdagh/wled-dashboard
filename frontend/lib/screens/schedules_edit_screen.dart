@@ -581,7 +581,6 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
                                         IconButton(
                                           icon: const Icon(Icons.clear, size: 16),
                                           onPressed: _clearStartDate,
-                                          padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(),
                                         ),
                                     ],
@@ -621,7 +620,7 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
                                     children: [
                                       const Icon(Icons.calendar_today, size: 20),
                                       const SizedBox(width: 12),
-                                      Flexible(
+                                      Expanded(
                                         child: Text(
                                           _endDate == null
                                               ? 'No end date'
@@ -636,7 +635,6 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
                                         IconButton(
                                           icon: const Icon(Icons.clear, size: 16),
                                           onPressed: _clearEndDate,
-                                          padding: EdgeInsets.zero,
                                           constraints: const BoxConstraints(),
                                         ),
                                     ],
