@@ -363,6 +363,10 @@ class _InstanceScreenState extends State<InstanceScreen> {
       context: context,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12.0),
+        side: BorderSide(
+          color: Colors.grey.withAlpha(25), // subtle border color
+          width: 1, // thin border
+        ),
       ),
       position: RelativeRect.fromLTRB(
         offset.dx - menuWidth + renderBox!.size.width,

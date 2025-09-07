@@ -253,6 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onTap: () {
                           _urlFocusNode.unfocus();
                           _keyFocusNode.unfocus();
+                          apiService.fetchSchedules();
                           Navigator.push(
                             context,
                             MaterialPageRoute(

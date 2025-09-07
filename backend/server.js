@@ -5,6 +5,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const {authenticate, rateLimitUnlessAuthenticated} = require("./middlewares/auth");
 const path = require('path');
+const cronManager = require('./controllers/cronManager');
 
 const app = express();
 
@@ -80,4 +81,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    cronManager.initializeCronJobs(); // Initialize cron jobs
 });
