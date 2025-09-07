@@ -72,8 +72,7 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
       // Set up the selected instances based on preset details
       for (var instance in presetDetails['instances']) {
         final instanceId = instance['instance_id'];
-        if(instanceId == null)
-          continue;
+        if (instanceId == null) continue;
 
         _instanceSelected[instanceId] = true;
 
@@ -119,7 +118,6 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
     final apiService = Provider.of<ApiService>(context, listen: false);
 
     for (var instance in apiService.instances) {
-
       try {
         final state = await apiService.getDeviceState(instance.id);
 
@@ -163,7 +161,7 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
         _instancePresets[instanceId] = _currentStateJson[instanceId];
       } else if (!value && _currentDevicePresets.containsKey(instanceId)) {
         // If unchecking, revert to using preset ID
-        if(_currentDevicePresets[instanceId] != -1) {
+        if (_currentDevicePresets[instanceId] != -1) {
           // If there is a preset currently active, use that
           _instancePresets[instanceId] = _currentDevicePresets[instanceId];
         } else {
@@ -235,13 +233,11 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
 
     // Build the instances array for the API request
     final instanceConfigs = selectedInstanceIds.map((instanceId) {
-
       final preset = _oldStateJson[instanceId] ??
           _instancePresets[instanceId] ??
           (_currentStateJson[instanceId]!['ps']! == -1
               ? _currentStateJson[instanceId] // If 'ps' is "-1", use _currentStateJson[instanceId]
               : _currentStateJson[instanceId]!['ps']); // Otherwise, use 'ps'
-
 
       return {
         'instance_id': instanceId,
@@ -320,13 +316,22 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
                       child: Text('No instances available'),
                     )
                   else
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: instances.map((instance) => _buildInstanceItem(instance, theme)).toList(),
+                    Column(
+                      children: [
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              children: instances.map((instance) => _buildInstanceItem(
+                                  instance,
+                                  theme,
+                                  instance == instances.last // Pass whether this is the last item
+                              )).toList(),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 80),
+                      ],
                     ),
                 ],
               ),
@@ -339,7 +344,7 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
     );
   }
 
-  Widget _buildInstanceItem(WLEDInstance instance, ThemeData theme) {
+  Widget _buildInstanceItem(WLEDInstance instance, ThemeData theme, bool isLastItem) {
     // Check if this instance has any presets
     final hasPresets = _availablePresets.containsKey(instance.id) && _availablePresets[instance.id]!.isNotEmpty;
 
@@ -358,7 +363,7 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
     }
 
     // if editing
-    if(widget.preset != null) {
+    if (widget.preset != null) {
       presetValue = _instancePresets[instance.id];
     }
 
@@ -381,79 +386,77 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.only(left: 16.0, right: 16.0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Material(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    child: CheckboxListTile(
-                      title: const Text('Use current state'),
-                      value: !hasPresets ? true : useCurrentState,
-                      onChanged: !hasPresets
-                          ? null
-                          : (value) {
-                        if (value != null) {
-                          _toggleUseCurrentState(instance.id, value);
-                        }
-                      },
-                      controlAffinity: ListTileControlAffinity.leading,
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                  padding: const EdgeInsets.only(left: 16.0, right: 16.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      child: CheckboxListTile(
+                        title: const Text('Use current state'),
+                        value: !hasPresets ? true : useCurrentState,
+                        onChanged: !hasPresets
+                            ? null
+                            : (value) {
+                                if (value != null) {
+                                  _toggleUseCurrentState(instance.id, value);
+                                }
+                              },
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: EdgeInsets.zero,
+                        dense: true,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
-                  ),
-                )
-
-              ),
-              if (_oldStateJson[instance.id] != null )
+                  )),
+              if (_oldStateJson[instance.id] != null)
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Wrap(
-                    direction: Axis.horizontal,  // Default to row layout
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    runSpacing: 10,
-                    spacing: 16,
-                    children: [
-                      // Text (does not wrap, stays in a single line)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 0.0),
-                        child: Text(
-                          'This preset is using an old state.',
-                          style: theme.textTheme.bodySmall!.copyWith(
-                            color: theme.colorScheme.error,
-                          ),
-                          overflow: TextOverflow.ellipsis,  // Show "..." if text overflows
-                        ),
-                      ),
-                      // Button (stays in row if space allows, wraps below if not)
-                      OutlinedButton(
-                        onPressed: () {
-                          setState(() {
-                            _oldStateJson.remove(instance.id);
-                          });
-                        },
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          side: BorderSide(color: theme.colorScheme.primary), // Border color
-                          foregroundColor: theme.colorScheme.primary, // Text + ripple color
-                        ),
-                        child: Text(
-                          'Use Current State',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Wrap(
+                      direction: Axis.horizontal,
+                      // Default to row layout
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: 10,
+                      spacing: 16,
+                      children: [
+                        // Text (does not wrap, stays in a single line)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 0.0),
+                          child: Text(
+                            'This preset is using an old state.',
+                            style: theme.textTheme.bodySmall!.copyWith(
+                              color: theme.colorScheme.error,
+                            ),
+                            overflow: TextOverflow.ellipsis, // Show "..." if text overflows
                           ),
                         ),
-                      ),
-
-                    ],
-                  )
+                        // Button (stays in row if space allows, wraps below if not)
+                        OutlinedButton(
+                          onPressed: () {
+                            setState(() {
+                              _oldStateJson.remove(instance.id);
+                            });
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            side: BorderSide(color: theme.colorScheme.primary), // Border color
+                            foregroundColor: theme.colorScheme.primary, // Text + ripple color
+                          ),
+                          child: Text(
+                            'Use Current State',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
                 ),
             ],
           ),
@@ -490,13 +493,13 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
               ),
             ),
           ),
-
-        Divider(
-          height: 20,
-          indent: 10,
-          endIndent: 10,
-          color: theme.colorScheme.surfaceContainerHighest,
-        ),
+        if (!isLastItem)
+          Divider(
+            height: 20,
+            indent: 10,
+            endIndent: 10,
+            color: theme.colorScheme.surfaceContainerHighest,
+          ),
       ],
     );
   }

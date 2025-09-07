@@ -491,7 +491,7 @@ class ApiService with ChangeNotifier {
       }
 
       // Success case - update state and notify
-      _successMessage = 'Preset applied successfully';
+      // _successMessage = 'Preset applied successfully';
 
       // Optionally refresh device states to get updated values
       await Future.delayed(const Duration(milliseconds: 300)); // Small delay for device to apply

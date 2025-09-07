@@ -441,7 +441,6 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
                     isExpanded: true,
                     icon: Icon(
                       Icons.arrow_drop_down,
-                      color: theme.colorScheme.primary,
                     ),
                     dropdownColor: theme.colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(12),
@@ -510,7 +509,12 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
                           return Padding(
                             padding: const EdgeInsets.only(right: 8.0),
                             child: FilterChip(
-                              label: Text(_getDayAbbreviation(entry.key)),
+                              label: Text(
+                                _getDayAbbreviation(entry.key),
+                                style: TextStyle(
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
                               selected: entry.value,
                               onSelected: (selected) {
                                 setState(() {

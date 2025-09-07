@@ -55,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await apiService.refreshDeviceStates();
 
       // Show success message
-      apiService.setSuccessMessage(turnOn ? 'All instances turned on' : 'All instances turned off');
+      // apiService.setSuccessMessage(turnOn ? 'All instances turned on' : 'All instances turned off');
     } catch (e) {
       // Show error message
       apiService.setErrorMessage('Failed to toggle power for all instances');
@@ -67,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Consumer<ApiService>(
       builder: (context, apiService, child) {
         // Handle messages
@@ -77,25 +78,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 SnackBar(
                   content: Text(apiService.errorMessage!),
                   backgroundColor: Colors.red,
-                  shape: Border(
-                    top: BorderSide(
-                      color: Colors.red.shade800,
-                      width: 2.0,
-                    ),
-                  ),
                 ),
               );
             } else if (apiService.successMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(apiService.successMessage!),
-                    backgroundColor: Colors.green,
-                    shape: Border(
-                      top: BorderSide(
-                        color: Colors.green.shade800,
-                        width: 2.0,
-                      ),
-                    ),
+                    backgroundColor: theme.colorScheme.secondary,
                   )
               );
             }

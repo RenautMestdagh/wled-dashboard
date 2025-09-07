@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
-import 'models/instance.dart';
 import 'screens/home_screen.dart';
 import 'services/api_service.dart';
 import 'services/theme_service.dart';
@@ -47,13 +46,13 @@ class MyApp extends StatelessWidget {
 
   // Define your custom colors
   static const Color _lightPrimary = Color(0xFF388E3C); // Green
-  static const Color _lightSecondary = Color(0xFFFFA000); // Amber
+  static const Color _lightSecondary = Color(0xFF6EC672); // Amber
   static const Color _lightSurface = Color(0xFFF5F5F5); // Light gray surface
   static const Color _lightSurfaceContainer = Color(0xFFE0E0E0); // Slightly darker for containers
   static const Color _lightOutline = Color(0xFFBDBDBD); // Medium gray for outlines
 
   static const Color _darkPrimary = Color(0xFF4CAF50); // Light Green
-  static const Color _darkSecondary = Color(0xFFFFC107); // Amber
+  static const Color _darkSecondary = Color(0xFF448144); // Dark Green
   static const Color _darkSurface = Color(0xFF303030); // Dark surface
   static const Color _darkSurfaceContainer = Color(0xFF424242); // Slightly lighter for containers
   static const Color _darkOutline = Color(0xFF757575); // Medium gray for outlines
