@@ -27,7 +27,7 @@ A secure Node.js API for managing and controlling multiple WLED LED devices, ena
 
 ## API Endpoints
 
-Base URL: `http://your-server:3000`
+**Base URL**: `http://your-server:3000`
 
 ### Authentication
 
@@ -37,14 +37,18 @@ All endpoints require authentication:
 - **Query Parameter**: `?apiKey=your-secure-api-key-123`
 - **Error**: `401 Unauthorized` if key is invalid or missing.
 
-Click below to expand endpoint details. Each section includes request inputs, response formats, and examples.
+Expand the sections below for detailed endpoint documentation, including request inputs, response formats, and examples.
+
+---
 
 <details>
-<summary><h3>Instance Management</h3></summary>
+<summary><h2>Instance Management</h2></summary>
 
-Endpoints for managing WLED device instances (e.g., adding, updating, reordering).
+Manage WLED device instances (e.g., adding, updating, reordering).
 
-#### GET /api/instances
+---
+
+### GET /api/instances
 
 **Description**: Retrieves all WLED instances, sorted by `display_order`.
 
@@ -75,7 +79,9 @@ Endpoints for managing WLED device instances (e.g., adding, updating, reordering
 curl -H "X-API-Key: your-key" http://your-server:3000/api/instances
 ```
 
-#### POST /api/instances
+---
+
+### POST /api/instances
 
 **Description**: Creates a new WLED instance after validating IP and WLED compatibility.
 
@@ -117,7 +123,9 @@ curl -X POST -H "X-API-Key: your-key" -H "Content-Type: application/json" \
      -d '{"ip":"192.168.1.100","name":"Living Room"}' http://your-server:3000/api/instances
 ```
 
-#### PUT /api/instances/{id}
+---
+
+### PUT /api/instances/{id}
 
 **Description**: Updates an instance’s IP or name; re-validates IP if provided.
 
@@ -162,7 +170,9 @@ curl -X PUT -H "X-API-Key: your-key" -H "Content-Type: application/json" \
      -d '{"name":"Bedroom"}' http://your-server:3000/api/instances/1
 ```
 
-#### DELETE /api/instances/{id}
+---
+
+### DELETE /api/instances/{id}
 
 **Description**: Deletes an instance and removes orphaned presets.
 
@@ -183,7 +193,9 @@ curl -X PUT -H "X-API-Key: your-key" -H "Content-Type: application/json" \
 curl -X DELETE -H "X-API-Key: your-key" http://your-server:3000/api/instances/1
 ```
 
-#### POST /api/instances/reorder
+---
+
+### POST /api/instances/reorder
 
 **Description**: Reorders instances by updating `display_order`.
 
@@ -226,12 +238,16 @@ curl -X POST -H "X-API-Key: your-key" -H "Content-Type: application/json" \
 
 </details>
 
+---
+
 <details>
-<summary><h3>Preset Management</h3></summary>
+<summary><h2>Preset Management</h2></summary>
 
-Endpoints for creating, updating, and applying presets to control multiple WLED devices.
+Create, update, and apply presets to control multiple WLED devices.
 
-#### GET /api/presets
+---
+
+### GET /api/presets
 
 **Description**: Retrieves all presets with instance counts, sorted by `display_order`.
 
@@ -260,7 +276,9 @@ Endpoints for creating, updating, and applying presets to control multiple WLED 
 curl -H "X-API-Key: your-key" http://your-server:3000/api/presets
 ```
 
-#### GET /api/presets/{id}
+---
+
+### GET /api/presets/{id}
 
 **Description**: Retrieves a preset with its associated instances and settings.
 
@@ -295,7 +313,9 @@ curl -H "X-API-Key: your-key" http://your-server:3000/api/presets
 curl -H "X-API-Key: your-key" http://your-server:3000/api/presets/1
 ```
 
-#### POST /api/presets
+---
+
+### POST /api/presets
 
 **Description**: Creates a preset with associated instances.
 
@@ -333,7 +353,9 @@ curl -X POST -H "X-API-Key: your-key" -H "Content-Type: application/json" \
      http://your-server:3000/api/presets
 ```
 
-#### PUT /api/presets/{id}
+---
+
+### PUT /api/presets/{id}
 
 **Description**: Updates a preset’s name or instances.
 
@@ -371,7 +393,9 @@ curl -X PUT -H "X-API-Key: your-key" -H "Content-Type: application/json" \
      -d '{"name":"Night Glow"}' http://your-server:3000/api/presets/1
 ```
 
-#### DELETE /api/presets/{id}
+---
+
+### DELETE /api/presets/{id}
 
 **Description**: Deletes a preset and its associated schedules/cron jobs.
 
@@ -392,7 +416,9 @@ curl -X PUT -H "X-API-Key: your-key" -H "Content-Type: application/json" \
 curl -X DELETE -H "X-API-Key: your-key" http://your-server:3000/api/presets/1
 ```
 
-#### POST /api/presets/{id}/apply
+---
+
+### POST /api/presets/{id}/apply
 
 **Description**: Applies a preset to its associated instances.
 
@@ -433,7 +459,9 @@ curl -X DELETE -H "X-API-Key: your-key" http://your-server:3000/api/presets/1
 curl -X POST -H "X-API-Key: your-key" http://your-server:3000/api/presets/1/apply
 ```
 
-#### POST /api/presets/reorder
+---
+
+### POST /api/presets/reorder
 
 **Description**: Reorders presets by updating `display_order`.
 
@@ -475,12 +503,16 @@ curl -X POST -H "X-API-Key: your-key" -H "Content-Type: application/json" \
 
 </details>
 
+---
+
 <details>
-<summary><h3>Schedule Management</h3></summary>
+<summary><h2>Schedule Management</h2></summary>
 
-Endpoints for managing cron-based schedules to automate preset application.
+Manage cron-based schedules for automated preset application.
 
-#### GET /api/schedules
+---
+
+### GET /api/schedules
 
 **Description**: Retrieves all schedules with associated preset names.
 
@@ -513,7 +545,9 @@ Endpoints for managing cron-based schedules to automate preset application.
 curl -H "X-API-Key: your-key" http://your-server:3000/api/schedules
 ```
 
-#### GET /api/schedules/{id}
+---
+
+### GET /api/schedules/{id}
 
 **Description**: Retrieves a schedule with its preset name.
 
@@ -546,7 +580,9 @@ curl -H "X-API-Key: your-key" http://your-server:3000/api/schedules
 curl -H "X-API-Key: your-key" http://your-server:3000/api/schedules/1
 ```
 
-#### POST /api/schedules
+---
+
+### POST /api/schedules
 
 **Description**: Creates a schedule for automated preset application.
 
@@ -587,7 +623,9 @@ curl -X POST -H "X-API-Key: your-key" -H "Content-Type: application/json" \
      http://your-server:3000/api/schedules
 ```
 
-#### PUT /api/schedules/{id}
+---
+
+### PUT /api/schedules/{id}
 
 **Description**: Updates a schedule; restarts cron job if enabled.
 
@@ -630,7 +668,9 @@ curl -X PUT -H "X-API-Key: your-key" -H "Content-Type: application/json" \
      http://your-server:3000/api/schedules/1
 ```
 
-#### DELETE /api/schedules/{id}
+---
+
+### DELETE /api/schedules/{id}
 
 **Description**: Deletes a schedule and stops its cron job.
 
@@ -653,12 +693,16 @@ curl -X DELETE -H "X-API-Key: your-key" http://your-server:3000/api/schedules/1
 
 </details>
 
+---
+
 <details>
-<summary><h3>WLED Device Interaction</h3></summary>
+<summary><h2>WLED Device Interaction</h2></summary>
 
-Endpoints for direct communication with WLED devices via the backend proxy.
+Directly interact with WLED devices via the backend proxy.
 
-#### GET /wled/{instanceId}/presets.json
+---
+
+### GET /wled/{instanceId}/presets.json
 
 **Description**: Fetches presets from a WLED device.
 
@@ -685,7 +729,9 @@ Endpoints for direct communication with WLED devices via the backend proxy.
 curl -H "X-API-Key: your-key" http://your-server:3000/wled/1/presets.json
 ```
 
-#### GET /wled/{instanceId}/state
+---
+
+### GET /wled/{instanceId}/state
 
 **Description**: Retrieves the current state of a WLED device.
 
@@ -705,7 +751,9 @@ curl -H "X-API-Key: your-key" http://your-server:3000/wled/1/presets.json
 curl -H "X-API-Key: your-key" http://your-server:3000/wled/1/state
 ```
 
-#### POST /wled/{instanceId}/state
+---
+
+### POST /wled/{instanceId}/state
 
 **Description**: Sets the state of a WLED device (e.g., power, brightness, color).
 
@@ -739,7 +787,9 @@ curl -X POST -H "X-API-Key: your-key" -H "Content-Type: application/json" \
      -d '{"on":true,"bri":200}' http://your-server:3000/wled/1/state
 ```
 
-#### GET /wled/{instanceId}/info
+---
+
+### GET /wled/{instanceId}/info
 
 **Description**: Retrieves info about a WLED device.
 
@@ -760,6 +810,8 @@ curl -H "X-API-Key: your-key" http://your-server:3000/wled/1/info
 ```
 
 </details>
+
+---
 
 ## Error Handling
 
