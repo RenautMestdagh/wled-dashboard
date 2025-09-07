@@ -9,6 +9,7 @@ A secure backend for managing and controlling WLED devices with preset functiona
     - [Authentication](#authentication)
     - [Instance Management](#instance-management)
     - [Preset Management](#preset-management)
+    - [Schedule Management](#schedule-management)
     - [WLED Device Interaction](#wled-device-interaction)
 - [Error Handling](#error-handling)
 - [Database Schema](#database-schema)
@@ -20,6 +21,7 @@ A secure backend for managing and controlling WLED devices with preset functiona
 - Secure API key authentication
 - WLED instance management
 - Preset creation and management
+- Automated preset scheduling with cron expressions
 - Direct WLED device control
 - Custom ordering of instances and presets
 - Input validation and error handling
@@ -162,7 +164,6 @@ GET /api/presets
         "id": 1,
         "name": "Party Mode",
         "display_order": 0,
-        "created_at": "2023-05-15T14:30:00.000Z",
         "instance_count": 2
     }
 ]
@@ -183,7 +184,6 @@ GET /api/presets/{id}
 {
     "id": 1,
     "name": "Party Mode",
-    "created_at": "2023-05-15T14:30:00.000Z",
     "instances": [
         {
             "instance_id": 1,
@@ -316,14 +316,12 @@ POST /api/presets/reorder
         "id": 3,
         "name": "Movie Night",
         "display_order": 0,
-        "created_at": "2023-05-15T14:30:00.000Z",
         "instance_count": 3
     },
     {
         "id": 1,
         "name": "Party Mode",
         "display_order": 1,
-        "created_at": "2023-05-15T14:30:00.000Z",
         "instance_count": 2
     },
     ...
@@ -334,6 +332,113 @@ POST /api/presets/reorder
 - Updates the display order of presets based on the array position
 - Returns all presets in their new order
 - Database transactions ensure all updates succeed or fail together
+
+### Schedule Management
+
+#### Get All Schedules
+
+```
+GET /api/schedules
+```
+
+**Response:**
+
+```json
+[
+    {
+        "id": 1,
+        "name": "Daily Lights On",
+        "cron_expression": "0 0 8 * * *",
+        "start_date": "2023-06-01",
+        "stop_date": "2023-12-31",
+        "enabled": 1,
+        "preset_id": 1,
+        "preset_name": "Morning Light"
+    }
+]
+```
+
+**Notes:**
+- Schedules are returned ordered by ID
+
+#### Get Schedule Details
+
+```
+GET /api/schedules/{id}
+```
+
+**Response:**
+
+```json
+{
+    "id": 1,
+    "name": "Daily Lights On",
+    "cron_expression": "0 0 8 * * *",
+    "start_date": "2023-06-01",
+    "stop_date": "2023-12-31",
+    "enabled": 1,
+    "preset_id": 1,
+    "preset_name": "Morning Light"
+}
+```
+
+#### Create Schedule
+
+```
+POST /api/schedules
+```
+
+**Request Body:**
+
+```json
+{
+    "name": "Daily Lights On",
+    "cron_expression": "0 0 8 * * *",
+    "start_date": "2023-06-01",
+    "stop_date": "2023-12-31",
+    "enabled": true,
+    "preset_id": 1
+}
+```
+
+**Notes:**
+
+- `cron_expression` must be a valid cron string
+- `start_date` and `stop_date` are optional and in YYYY-MM-DD format
+- `enabled` defaults to true
+- Name must be unique
+- If enabled, a cron job is scheduled immediately
+
+#### Update Schedule
+
+```
+PUT /api/schedules/{id}
+```
+
+**Request Body (partial updates supported):**
+
+```json
+{
+    "name": "Updated Schedule",
+    "cron_expression": "0 0 9 * * *",
+    "start_date": "CLEAR",
+    "stop_date": "2024-01-01",
+    "enabled": false
+}
+```
+
+**Notes:**
+- Use "CLEAR" to remove start_date or stop_date
+- Updates the cron job if enabled changes or schedule is modified
+
+#### Delete Schedule
+
+```
+DELETE /api/schedules/{id}
+```
+
+**Notes:**
+- Stops any associated cron job
 
 ### WLED Device Interaction
 
@@ -470,8 +575,9 @@ GET /wled/{instanceId}/info
 **Tables:**
 
 - `instances` (id, ip, name, display_order, last_seen)
-- `presets` (id, name, display_order, created_at)
+- `presets` (id, name, display_order)
 - `preset_instances` (preset_id, instance_id, instance_preset)
+- `preset_schedules` (id, name, cron_expression, start_date, stop_date, enabled, preset_id)
 
 ## Environment Variables
 

@@ -8,6 +8,12 @@ RUN flutter pub get && flutter build web
 FROM node:22-alpine
 WORKDIR /app
 
+# Install timezone data
+RUN apk add --no-cache tzdata
+
+# Set timezone to Brussels
+ENV TZ=Europe/Brussels
+
 # Create data directory
 RUN mkdir -p /data && chown node:node /data
 
