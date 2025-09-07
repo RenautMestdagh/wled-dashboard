@@ -27,6 +27,10 @@ class ScheduleCard extends StatelessWidget {
       context: context,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12.0),
+        side: BorderSide(
+          color: Colors.grey.withAlpha(25), // subtle border color
+          width: 1, // thin border
+        ),
       ),
       position: RelativeRect.fromLTRB(
         offset.dx - menuWidth + renderBox.size.width,
@@ -81,57 +85,44 @@ class ScheduleCard extends StatelessWidget {
       // Parse days
       if (dayOfWeek == '*') return 'At $time, every day';
 
-      final dayNumbers = dayOfWeek.split(',').map((d) => int.tryParse(d) ?? 0).toList();
-      final dayNames = _convertDayNumbersToNames(dayNumbers);
-
+      final dayNames = _convertDayExpressionToNames(dayOfWeek);
       return 'At $time, on $dayNames';
     } catch (e) {
       return cron; // Return original if parsing fails
     }
   }
 
-  String _convertDayNumbersToNames(List<int> dayNumbers) {
+  String _convertDayExpressionToNames(String dayExpression) {
     const dayMap = {
-      0: 'sun',
-      1: 'mon',
-      2: 'tue',
-      3: 'wed',
-      4: 'thu',
-      5: 'fri',
-      6: 'sat',
+      '0': 'sun',
+      '1': 'mon',
+      '2': 'tue',
+      '3': 'wed',
+      '4': 'thu',
+      '5': 'fri',
+      '6': 'sat',
+      '7': 'sun', // Some cron systems use 7 for Sunday
     };
 
-    // Sort and remove duplicates
-    dayNumbers.sort();
-    dayNumbers = dayNumbers.toSet().toList();
+    final parts = dayExpression.split(',');
+    final result = <String>[];
 
-    // Find consecutive days
-    final ranges = <String>[];
-    int? start;
-    int? end;
-
-    for (int i = 0; i < dayNumbers.length; i++) {
-      if (start == null) {
-        start = dayNumbers[i];
-        end = dayNumbers[i];
-      } else if (dayNumbers[i] == end! + 1) {
-        end = dayNumbers[i];
+    for (final part in parts) {
+      if (part.contains('-')) {
+        // Handle ranges like "1-3" → "mon-wed"
+        final rangeParts = part.split('-');
+        if (rangeParts.length == 2) {
+          final start = dayMap[rangeParts[0]] ?? rangeParts[0];
+          final end = dayMap[rangeParts[1]] ?? rangeParts[1];
+          result.add('$start-$end');
+        }
       } else {
-        ranges.add(start == end
-            ? dayMap[start]!
-            : '${dayMap[start]}-${dayMap[end]}');
-        start = dayNumbers[i];
-        end = dayNumbers[i];
+        // Handle single days like "5" → "fri"
+        result.add(dayMap[part] ?? part);
       }
     }
 
-    if (start != null) {
-      ranges.add(start == end
-          ? dayMap[start]!
-          : '${dayMap[start]}-${dayMap[end]}');
-    }
-
-    return ranges.join(' & ');
+    return result.join(', ');
   }
 
   @override
@@ -152,7 +143,12 @@ class ScheduleCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(12.0),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.only(
+            left: 16.0,
+            right: 16.0,
+            top: 14.0,
+            bottom: 10.0,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -161,7 +157,7 @@ class ScheduleCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 8.0),
+                      padding: const EdgeInsets.only(left: 0.0),
                       child: Text(
                         schedule.name,
                         style: theme.textTheme.titleMedium?.copyWith(
@@ -179,61 +175,70 @@ class ScheduleCard extends StatelessWidget {
               ),
               const SizedBox(height: 12.0),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: 16,
-                    color: theme.colorScheme.primary,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _parseCronExpression(schedule.cronExpression),
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.lightbulb_outline,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            schedule.presetName,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
+                      if (schedule.startDate != null || schedule.stopDate != null) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.date_range,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _buildDateRangeText(schedule),
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _parseCronExpression(schedule.cronExpression),
-                    style: theme.textTheme.bodyMedium,
+                  IconButton(
+                    key: _moreButtonKey,
+                    icon: const Icon(Icons.more_vert),
+                    iconSize: 20,
+                    padding: EdgeInsets.zero,
+                    onPressed: () => _showOptionsMenu(context),
+                    tooltip: 'More options',
                   ),
                 ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(
-                    Icons.lightbulb_outline,
-                    size: 16,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    schedule.presetName,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                ],
-              ),
-              if (schedule.startDate != null || schedule.stopDate != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.date_range,
-                      size: 16,
-                      color: theme.colorScheme.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _buildDateRangeText(schedule),
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: IconButton(
-                  key: _moreButtonKey,
-                  icon: const Icon(Icons.more_vert, size: 20),
-                  onPressed: () => _showOptionsMenu(context),
-                  tooltip: 'More options',
-                  constraints: const BoxConstraints(),
-                ),
               ),
             ],
           ),

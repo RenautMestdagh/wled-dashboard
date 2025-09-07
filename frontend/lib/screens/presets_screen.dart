@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:frontend/screens/presets_edit_screen.dart';
 import 'package:provider/provider.dart';
 import '../models/preset.dart';
-import '../models/instance.dart';
 import '../services/api_service.dart';
 import '../widgets/preset_card.dart';
 
@@ -62,49 +61,53 @@ class PresetsScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
-      body: presets.isEmpty
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.collections_bookmark_outlined, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-              'No presets yet',
-              style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Create presets to quickly apply configurations to multiple devices',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => _navigateToAddPreset(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Create Preset'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary,
-                foregroundColor: theme.colorScheme.onPrimary,
-              ),
-            ),
-          ],
-        ),
-      )
-          : RefreshIndicator(
+      body: RefreshIndicator(
         onRefresh: apiService.fetchPresets,
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16.0),
-          itemCount: presets.length,
-          itemBuilder: (context, index) {
-            return PresetCard(
-              preset: presets[index],
-              onApply: () => apiService.applyPreset(presets[index].id),
-              onEdit: () => _navigateToEditPreset(context, presets[index]),
-              onDelete: () => _confirmDelete(context, presets[index]),
-            );
-          },
+        child: Stack(
+          children: [
+            ListView.builder(
+              padding: const EdgeInsets.all(16.0),
+              itemCount: presets.length,
+              itemBuilder: (context, index) {
+                return PresetCard(
+                  preset: presets[index],
+                  onApply: () => apiService.applyPreset(presets[index].id),
+                  onEdit: () => _navigateToEditPreset(context, presets[index]),
+                  onDelete: () => _confirmDelete(context, presets[index]),
+                );
+              },
+            ),
+            if(presets.isEmpty)
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.collections_bookmark_outlined, size: 64, color: Colors.grey),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No presets yet',
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Create presets to quickly apply configurations to multiple devices',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () => _navigateToAddPreset(context),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Create Preset'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+          ],
         ),
       ),
       floatingActionButton: presets.isNotEmpty

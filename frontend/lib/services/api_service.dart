@@ -125,7 +125,7 @@ class ApiService with ChangeNotifier {
       await Future.wait([
         fetchInstances(),
         fetchPresets(),
-        // fetchSchedules(),
+        fetchSchedules(),
       ]);
 
       // After fetching instances, also fetch their states
