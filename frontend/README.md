@@ -24,12 +24,10 @@ A Flutter app for controlling WLED devices via the backend API. It supports iOS,
 ## Screenshots
 
 | Home Screen | Instance Control | Preset Edit |
-|-------------|------------------|-------------|
-| ![Home Screen](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/home_screen.jpg?raw=true) | ![Instance Control](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/instance_control.jpg?raw=true) | ![Preset Edit](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/preset_edit.jpg?raw=true) |
-
-| Settings                                                                                                        | Schedules | Reorder |
-|-----------------------------------------------------------------------------------------------------------------|----------|---------|
-| ![Settings](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/settings.jpg?raw=true) | ![Schedules](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/schedule.jpg?raw=true) | ![Reorder](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/reorder.jpg?raw=true) |
+|:-----------:|:----------------:|:-----------:|
+| <img src="../.github/pictures/home_screen.jpg" width="200" alt="Home Screen"> | <img src="../.github/pictures/instance_control.jpg" width="200" alt="Instance Control"> | <img src="../.github/pictures/preset_edit.jpg" width="200" alt="Preset Edit"> |
+| **Settings** | **Schedules** | **Reorder** |
+| <img src="../.github/pictures/settings.jpg" width="200" alt="Settings"> | <img src="../.github/pictures/schedule.jpg" width="200" alt="Schedules"> | <img src="../.github/pictures/reorder.jpg" width="200" alt="Reorder"> |
 
 ## Installation
 
