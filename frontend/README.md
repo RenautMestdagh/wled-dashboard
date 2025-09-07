@@ -20,8 +20,6 @@ A Flutter app for controlling WLED devices via the backend API. It supports iOS,
 |-----------|----------|---------|
 | ![Schedules](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/schedule.jpg?raw=true) | ![Settings](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/settings.jpg?raw=true) | ![Reorder](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/reorder.jpg?raw=true) |
 
-**Suggested Pictures**: Add GIFs showing interactions, e.g., applying a preset (record via screen capture tools like Kap or LiceCap). Also, include web-specific screenshots to highlight responsiveness.
-
 ## Installation
 
 (Refer to main README for prerequisites/cloning.)

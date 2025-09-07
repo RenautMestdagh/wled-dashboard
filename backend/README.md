@@ -65,9 +65,35 @@ Base: `http://your-server:3000`. Auth: `X-API-Key` header/query.
 
 ```mermaid
 erDiagram
-    instances ||--o{ preset_instances : has
-    presets ||--o{ preset_instances : has
-    presets ||--o{ preset_schedules : has
+    instances ||--o{ preset_instances : contains
+    presets ||--o{ preset_instances : contains
+    presets ||--o{ preset_schedules : triggers
+    instances {
+        int id PK
+        string ip UK
+        string name
+        int display_order
+        timestamp last_seen
+    }
+    presets {
+        int id PK
+        string name UK
+        int display_order
+    }
+    preset_instances {
+        int preset_id PK,FK
+        int instance_id PK,FK
+        string instance_preset
+    }
+    preset_schedules {
+        int id PK
+        string name UK
+        string cron_expression
+        string start_date
+        string stop_date
+        boolean enabled
+        int preset_id FK
+    }
 ```
 
 ## Environment Variables
