@@ -24,24 +24,18 @@ graph TD
     B --> C[Node.js Backend API]
     C --> D[SQLite DB]
     C --> E[WLED Devices]
-
-    subgraph Frontend Functionalities
-        B1[Device Discovery (mDNS)]
-        B2[Preset/Schedule UI]
-        B3[Real-Time Controls]
+    subgraph "Frontend Functionalities"
+    B1[Device Discovery (mDNS)]
+    B2[Preset/Schedule UI]
+    B3[Real-Time Controls]
+    B --> B1 & B2 & B3
     end
-    B --> B1
-    B --> B2
-    B --> B3
-
-    subgraph Backend Functionalities
-        C1[API Endpoints]
-        C2[Cron Scheduling]
-        C3[Device Proxy]
+    subgraph "Backend Functionalities"
+    C1[API Endpoints]
+    C2[Cron Scheduling]
+    C3[Device Proxy]
+    C --> C1 & C2 & C3
     end
-    C --> C1
-    C --> C2
-    C --> C3
 ```
 
 ## Quick Start
