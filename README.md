@@ -2,7 +2,7 @@
 
 The **WLED Dashboard** is a cross-platform tool for managing multiple WLED LED controllers. It allows one-tap control via presets, automating lighting across devices. The Flutter frontend provides an intuitive UI for mobile and web, while the Node.js backend handles secure API interactions and scheduling.
 
-## Features (Backend-Specific)
+## Features
 
 - **Preset-Based Control**: Group device states (e.g., power, brightness, colors) into presets for instant application to multiple WLED devices.
 - **Scheduling Automation**: Use cron expressions to trigger presets at specific times or intervals.
