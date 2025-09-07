@@ -2,6 +2,17 @@
 
 A Flutter app for controlling WLED devices via the backend API. It supports iOS, Android, and web, focusing on intuitive preset application and device management.
 
+## Table of Contents
+
+- [Features](#features)
+- [Screenshots](#screenshots)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Key functionalities](#key-functionalities-explained)
+- [Dependencies](#dependencies)
+- [Troubleshooting/FAQ](#troubleshootingfaq)
+
 ## Features (Frontend-Specific)
 
 - **UI Components**: Tabbed navigation for presets, instances, and settings. Each instance screen offers sliders for brightness/CCT, color pickers, and preset lists.
@@ -16,9 +27,9 @@ A Flutter app for controlling WLED devices via the backend API. It supports iOS,
 |-------------|------------------|-------------|
 | ![Home Screen](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/home_screen.jpg?raw=true) | ![Instance Control](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/instance_control.jpg?raw=true) | ![Preset Edit](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/preset_edit.jpg?raw=true) |
 
-| Schedules | Settings | Reorder |
-|-----------|----------|---------|
-| ![Schedules](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/schedule.jpg?raw=true) | ![Settings](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/settings.jpg?raw=true) | ![Reorder](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/reorder.jpg?raw=true) |
+| Settings                                                                                                        | Schedules | Reorder |
+|-----------------------------------------------------------------------------------------------------------------|----------|---------|
+| ![Settings](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/settings.jpg?raw=true) | ![Schedules](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/schedule.jpg?raw=true) | ![Reorder](https://github.com/RenautMestdagh/wled-dashboard/blob/main/.github/pictures/reorder.jpg?raw=true) |
 
 ## Installation
 
