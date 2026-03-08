@@ -45,10 +45,9 @@ module.exports = {
             const presets = await wledService.getDevicePresets(instanceId);
             res.json(presets);
         } catch (error) {
-            console.error('Failed to fetch WLED presets:', error);
+            console.error('Failed to fetch WLED presets');
             res.status(502).json({
                 error: 'Failed to communicate with WLED device',
-                details: error.message
             });
         }
     },
@@ -61,7 +60,6 @@ module.exports = {
         } catch (error) {
             res.status(502).json({
                 error: 'Failed to communicate with WLED instance',
-                details: error.message
             });
         }
     }

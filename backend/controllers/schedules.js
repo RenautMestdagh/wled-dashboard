@@ -1,53 +1,11 @@
-const db = require('../config/database');
+const Schedule = require('../models/Schedule');
 const cronManager = require('./cronManager');
-
-// Helper functions
-const dbQuery = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
-};
-
-const dbGet = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-        });
-    });
-};
-
-const dbRun = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function (err) {
-            if (err) reject(err);
-            else resolve(this);
-        });
-    });
-};
 
 module.exports = {
     // GET /schedules
     getAllSchedules: async (req, res) => {
         try {
-            const schedules = await dbQuery(`
-                SELECT
-                    ps.id,
-                    ps.name,
-                    ps.cron_expression,
-                    ps.start_date,
-                    ps.stop_date,
-                    ps.enabled,
-                    ps.preset_id,
-                    p.name as preset_name
-                FROM preset_schedules ps
-                         JOIN presets p ON ps.preset_id = p.id
-                ORDER BY ps.id
-            `);
-
+            const schedules = Schedule.all('id');
             res.json(schedules);
         } catch (error) {
             console.error('Failed to get schedules:', error);
@@ -60,20 +18,7 @@ module.exports = {
         try {
             const { id } = req.params;
 
-            const schedule = await dbGet(`
-                SELECT
-                    ps.id,
-                    ps.name,
-                    ps.cron_expression,
-                    ps.start_date,
-                    ps.stop_date,
-                    ps.enabled,
-                    ps.preset_id,
-                    p.name as preset_name
-                FROM preset_schedules ps
-                         JOIN presets p ON ps.preset_id = p.id
-                WHERE ps.id = ?
-            `, [id]);
+            const schedule = Schedule.find(id);
 
             if (!schedule) {
                 return res.status(404).json({ error: 'Schedule not found' });
@@ -95,33 +40,17 @@ module.exports = {
                 return res.status(400).json({ error: 'Missing or invalid required fields' });
             }
 
-            const result = await dbRun(`
-                INSERT INTO preset_schedules (name, cron_expression, start_date, stop_date, enabled, preset_id)
-                VALUES (?, ?, ?, ?, ?, ?)
-            `, [
-                name.trim(),
-                cron_expression.trim(),
-                start_date || null,
-                stop_date || null,
-                enabled ? 1 : 0,
+            const scheduleId = Schedule.create({
+                name: name.trim(),
+                cron_expression: cron_expression.trim(),
+                start_date: start_date || null,
+                stop_date: stop_date || null,
+                enabled: enabled ? 1 : 0,
                 preset_id
-            ]);
+            });
 
             // Get the complete schedule with preset_name
-            const newSchedule = await dbGet(`
-                SELECT
-                    ps.id,
-                    ps.name,
-                    ps.cron_expression,
-                    ps.start_date,
-                    ps.stop_date,
-                    ps.enabled,
-                    ps.preset_id,
-                    p.name as preset_name
-                FROM preset_schedules ps
-                         JOIN presets p ON ps.preset_id = p.id
-                WHERE ps.id = ?
-            `, [result.lastID]);
+            const newSchedule = Schedule.find(scheduleId);
 
             if (newSchedule.enabled) {
                 cronManager.scheduleCronJob(newSchedule);
@@ -145,49 +74,24 @@ module.exports = {
             const { name, cron_expression, start_date, stop_date, enabled, preset_id } = req.body;
 
             // Check if schedule exists
-            const existing = await dbGet(`SELECT * FROM preset_schedules WHERE id = ?`, [id]);
+            const existing = Schedule.exists(id);
             if (!existing) {
                 return res.status(404).json({ error: 'Schedule not found' });
             }
 
-            // Handle special 'CLEAR' values for dates
-            const processedStartDate = start_date === 'CLEAR' ? null : start_date;
-            const processedStopDate = stop_date === 'CLEAR' ? null : stop_date;
+            // Update schedule dynamically covering partial updates from frontend
+            const dataToUpdate = {};
+            if (name !== undefined && name !== null) dataToUpdate.name = name;
+            if (cron_expression !== undefined && cron_expression !== null) dataToUpdate.cron_expression = cron_expression;
+            if (start_date !== undefined) dataToUpdate.start_date = start_date === 'CLEAR' ? null : start_date;
+            if (stop_date !== undefined) dataToUpdate.stop_date = stop_date === 'CLEAR' ? null : stop_date;
+            if (enabled !== undefined && enabled !== null) dataToUpdate.enabled = enabled ? 1 : 0;
+            if (preset_id !== undefined && preset_id !== null) dataToUpdate.preset_id = preset_id;
 
-            await dbRun(`
-                UPDATE preset_schedules
-                SET name = COALESCE(?, name),
-                    cron_expression = COALESCE(?, cron_expression),
-                    start_date = ?,
-                    stop_date = ?,
-                    enabled = COALESCE(?, enabled),
-                    preset_id = COALESCE(?, preset_id)
-                WHERE id = ?
-            `, [
-                name,
-                cron_expression,
-                processedStartDate,
-                processedStopDate,
-                enabled !== undefined ? (enabled ? 1 : 0) : null,
-                preset_id,
-                id
-            ]);
+            Schedule.update(id, dataToUpdate);
 
             // Get the complete updated schedule with preset_name
-            const updated = await dbGet(`
-                SELECT
-                    ps.id,
-                    ps.name,
-                    ps.cron_expression,
-                    ps.start_date,
-                    ps.stop_date,
-                    ps.enabled,
-                    ps.preset_id,
-                    p.name as preset_name
-                FROM preset_schedules ps
-                         JOIN presets p ON ps.preset_id = p.id
-                WHERE ps.id = ?
-            `, [id]);
+            const updated = Schedule.find(id);
 
             cronManager.updateCronJob(id);
 
@@ -207,14 +111,14 @@ module.exports = {
         try {
             const { id } = req.params;
 
-            const existing = await dbGet(`SELECT 1 FROM preset_schedules WHERE id = ?`, [id]);
+            const existing = Schedule.exists(id);
             if (!existing) {
                 return res.status(404).json({ error: 'Schedule not found' });
             }
 
             cronManager.stopCronJob(id);
 
-            const result = await dbRun(`DELETE FROM preset_schedules WHERE id = ?`, [id]);
+            const result = Schedule.delete(id);
 
             if (result.changes === 0) {
                 return res.status(404).json({ error: 'Schedule not found' });

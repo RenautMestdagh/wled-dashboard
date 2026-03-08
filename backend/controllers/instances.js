@@ -1,39 +1,6 @@
-const db = require('../config/database');
+const Instance = require('../models/Instance');
 const { get } = require("axios");
 const MulticastDNS = require('multicast-dns');
-
-// Helper functions to reduce duplication
-const dbQuery = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
-};
-
-const dbGet = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-        });
-    });
-};
-
-const dbRun = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function(err) {
-            if (err) reject(err);
-            else resolve(this);
-        });
-    });
-};
-
-// Transaction helper functions
-const beginTransaction = () => dbRun('BEGIN TRANSACTION');
-const commitTransaction = () => dbRun('COMMIT');
-const rollbackTransaction = () => dbRun('ROLLBACK').catch(() => {});
 
 // Validation helpers
 const validateIP = (ip) => {
@@ -67,16 +34,10 @@ const checkWLEDConnection = async (ip) => {
 
 const addInstance = async (ip, name) => {
     try {
-        // Get the next display order
-        const maxOrderResult = await dbGet("SELECT MAX(display_order) as maxOrder FROM instances");
-        const nextOrder = maxOrderResult.maxOrder !== null ? maxOrderResult.maxOrder + 1 : 0;
+        const maxOrder = Instance.max('display_order');
+        const nextOrder = maxOrder !== -1 ? maxOrder + 1 : 0;
 
-        // Create instance
-        await dbRun(
-            "INSERT INTO instances (ip, name, display_order) VALUES (?, ?, ?)",
-            [ip, name, nextOrder]
-        );
-
+        Instance.create({ ip, name, display_order: nextOrder });
         return true;
     } catch (error) {
         console.error("Failed to add discovered instance:", error);
@@ -88,7 +49,7 @@ const addInstance = async (ip, name) => {
 module.exports = {
     getAllInstances: async (req, res) => {
         try {
-            const instances = await dbQuery("SELECT * FROM instances ORDER BY display_order");
+            const instances = Instance.all('display_order');
             res.json(instances);
         } catch (error) {
             console.error('Failed to get instances:', error);
@@ -203,25 +164,28 @@ module.exports = {
             }
 
             // Check for duplicate IP
-            const existingInstance = await dbGet("SELECT id FROM instances WHERE ip = ?", [ip]);
+            const existingInstance = Instance.findBy('ip', ip);
             if (existingInstance) {
                 return res.status(409).json({ error: "A WLED instance with this IP already exists" });
             }
 
-            const success = await addInstance(ip, name);
-            if (!success) {
+            const maxOrder = Instance.max('display_order');
+            const nextOrder = maxOrder !== -1 ? maxOrder + 1 : 0;
+            const newId = Instance.create({ ip, name, display_order: nextOrder });
+            
+            if (!newId) {
                 throw new Error("Failed to create instance");
             }
 
             // Get the newly created instance
-            const newInstance = await dbGet("SELECT * FROM instances WHERE id = LAST_INSERT_ROWID()");
+            const newInstance = Instance.find(newId);
             newInstance.supportsRGB = [1, 3, 7].includes(connectionCheck.data.leds.lc);
 
             res.status(201).json(newInstance);
         } catch (error) {
             console.error("Failed to create instance:", error);
 
-            if (error.message.includes('SQLITE_CONSTRAINT')) {
+            if (error.message.includes('UNIQUE constraint failed')) {
                 res.status(409).json({ error: "A WLED instance with this IP already exists" });
             } else {
                 res.status(500).json({ error: "Failed to create WLED instance", details: error.message });
@@ -243,11 +207,7 @@ module.exports = {
                 }
 
                 // Check for duplicate IP
-                const existingInstance = await dbGet(
-                    "SELECT id FROM instances WHERE ip = ? AND id != ?",
-                    [ip, id]
-                );
-
+                const existingInstance = Instance.findBy('ip', ip, id);
                 if (existingInstance) {
                     return res.status(409).json({ error: "A WLED instance with this IP already exists" });
                 }
@@ -260,17 +220,18 @@ module.exports = {
             }
 
             // Update instance
-            const result = await dbRun(
-                "UPDATE instances SET ip = COALESCE(?, ip), name = COALESCE(?, name) WHERE id = ?",
-                [ip, name, id]
-            );
+            const dataToUpdate = {};
+            if (ip !== undefined) dataToUpdate.ip = ip;
+            if (name !== undefined) dataToUpdate.name = name;
+            
+            const result = Instance.update(id, dataToUpdate);
 
             if (result.changes === 0) {
                 return res.status(404).json({ error: "Instance not found" });
             }
 
             // Get updated instance
-            let instance = await dbGet("SELECT * FROM instances WHERE id = ?", [id]);
+            const instance = Instance.find(id);
 
             res.json(instance);
         } catch (error) {
@@ -284,22 +245,14 @@ module.exports = {
 
         try {
             // Delete the instance
-            const result = await dbRun("DELETE FROM instances WHERE id = ?", [id]);
+            const result = Instance.delete(id);
 
             if (result.changes === 0) {
                 return res.status(404).json({ error: "Instance not found" });
             }
 
             // Clean up orphaned presets
-            await dbRun(`
-        DELETE FROM presets 
-        WHERE id IN (
-          SELECT p.id 
-          FROM presets p
-          LEFT JOIN preset_instances pi ON p.id = pi.preset_id
-          WHERE pi.preset_id IS NULL
-        )
-      `);
+            Instance.cleanupOrphanedPresets();
 
             res.json({ success: true });
         } catch (error) {
@@ -317,21 +270,17 @@ module.exports = {
         }
 
         try {
-            await beginTransaction();
-
-            // Update the order for each ID in the array
-            for (let index = 0; index < orderedIds.length; index++) {
-                const id = orderedIds[index];
-                await dbRun("UPDATE instances SET display_order = ? WHERE id = ?", [index, id]);
-            }
-
-            await commitTransaction();
+            Instance.transaction(() => {
+                for (let index = 0; index < orderedIds.length; index++) {
+                    const id = orderedIds[index];
+                    Instance.update(id, { display_order: index });
+                }
+            })();
 
             // Return the reordered instances
-            const instances = await dbQuery("SELECT * FROM instances ORDER BY display_order");
+            const instances = Instance.all('display_order');
             res.json(instances);
         } catch (error) {
-            await rollbackTransaction();
             console.error('Failed to reorder instances:', error);
             res.status(500).json({ error: error.message });
         }

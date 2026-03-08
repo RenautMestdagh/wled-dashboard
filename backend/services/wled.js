@@ -1,5 +1,5 @@
 const axios = require('axios');
-const db = require('../config/database');
+const Instance = require('../models/Instance');
 
 class WLEDService {
     constructor() {
@@ -9,17 +9,11 @@ class WLEDService {
     }
 
     async getInstanceIp(instanceId) {
-        return new Promise((resolve, reject) => {
-            db.get(
-                'SELECT ip FROM instances WHERE id = ?',
-                [instanceId],
-                (err, row) => {
-                    if (err) return reject(err);
-                    if (!row) return reject(new Error('Instance not found'));
-                    resolve(row.ip);
-                }
-            );
-        });
+        const instance = Instance.find(instanceId);
+        if (!instance) {
+            throw new Error('Instance not found');
+        }
+        return instance.ip;
     }
 
     async sendCommand(instanceId, command) {
@@ -31,10 +25,7 @@ class WLEDService {
         });
 
         // Update last_seen timestamp
-        db.run(
-            'UPDATE instances SET last_seen = CURRENT_TIMESTAMP WHERE id = ?',
-            [instanceId]
-        );
+        Instance.update(instanceId, { last_seen: new Date().toISOString() });
 
         return response.data;
     }
@@ -48,10 +39,7 @@ class WLEDService {
         });
 
         // Update last_seen timestamp
-        db.run(
-            'UPDATE instances SET last_seen = CURRENT_TIMESTAMP WHERE id = ?',
-            [instanceId]
-        );
+        Instance.update(instanceId, { last_seen: new Date().toISOString() });
 
         return response.data;
     }
@@ -66,14 +54,11 @@ class WLEDService {
             });
 
             // Update last_seen timestamp
-            db.run(
-                'UPDATE instances SET last_seen = CURRENT_TIMESTAMP WHERE id = ?',
-                [instanceId]
-            );
+            Instance.update(instanceId, { last_seen: new Date().toISOString() });
 
             return response.data;
         } catch (error) {
-            console.error(`Failed to fetch presets from WLED instance ${instanceId}:`, error);
+            console.error(`Failed to fetch presets from WLED instance ${instanceId}`);
             throw new Error('Failed to retrieve WLED presets');
         }
     }
@@ -88,14 +73,11 @@ class WLEDService {
             });
 
             // Update last_seen timestamp
-            db.run(
-                'UPDATE instances SET last_seen = CURRENT_TIMESTAMP WHERE id = ?',
-                [instanceId]
-            );
+            Instance.update(instanceId, { last_seen: new Date().toISOString() });
 
             return response.data;
         } catch (error) {
-            console.error(`Failed to fetch info from WLED instance ${instanceId}:`, error);
+            console.error(`Failed to fetch info from WLED instance ${instanceId}`);
             throw new Error('Failed to retrieve WLED info');
         }
     }

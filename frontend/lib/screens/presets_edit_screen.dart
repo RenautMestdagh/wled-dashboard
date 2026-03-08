@@ -85,7 +85,7 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
           _useCurrentState[instanceId] = false;
         } else {
           // If parsing fails, assume it's a current state value
-          _oldStateJson[instanceId] = json.decode(instance['instance_preset'] as String) as Map<String, dynamic>;
+          _oldStateJson[instanceId] = instance['instance_preset'] as Map<String, dynamic>;
           _useCurrentState[instanceId] = true;
         }
       }

@@ -1,99 +1,10 @@
-const db = require('../config/database');
-
-// Database operation helper functions
-const dbQuery = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
-};
-
-const dbGet = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-        });
-    });
-};
-
-const dbRun = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function(err) {
-            if (err) reject(err);
-            else resolve(this);
-        });
-    });
-};
-
-// Transaction helper functions
-const beginTransaction = () => dbRun('BEGIN TRANSACTION');
-const commitTransaction = () => dbRun('COMMIT');
-const rollbackTransaction = () => dbRun('ROLLBACK').catch(() => {});
-
-// Helper function to get preset details
-const getPresetDetails = async (id) => {
-    const preset = await dbGet(`
-    SELECT 
-      p.*,
-      json_group_array(
-        json_object(
-          'instance_id', pi.instance_id,
-          'instance_name', i.name,
-          'instance_ip', i.ip,
-          'instance_preset', pi.instance_preset
-        )
-      ) as instances
-    FROM presets p
-    LEFT JOIN preset_instances pi ON p.id = pi.preset_id
-    LEFT JOIN instances i ON pi.instance_id = i.id
-    WHERE p.id = ?
-    GROUP BY p.id
-  `, [id]);
-
-    if (!preset) return null;
-
-    return {
-        id: preset.id,
-        name: preset.name,
-        instances: preset.instances ? JSON.parse(preset.instances) : []
-    };
-};
-
-// Helper to handle preset instance associations
-const associateInstances = async (presetId, instances) => {
-    if (!instances || instances.length === 0) return;
-
-    const insertPromises = instances.map(instance =>
-        dbRun(
-            `INSERT INTO preset_instances (preset_id, instance_id, instance_preset) VALUES (?, ?, ?)`,
-            [
-                presetId,
-                instance.instance_id,
-                JSON.stringify(instance.instance_preset || {})
-            ]
-        )
-    );
-
-    await Promise.all(insertPromises);
-};
+const Preset = require('../models/Preset');
 
 module.exports = {
     getAllPresets: async (req, res) => {
         try {
-            const presets = await dbQuery(`
-                SELECT
-                    p.id,
-                    p.name,
-                    p.display_order,
-                    (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
-                FROM presets p
-                ORDER BY p.display_order
-            `);
-
-            res.json(presets);
+            const presets = Preset.all('display_order');
+            res.json(presets.map(p => p.toSummaryJSON()));
         } catch (error) {
             console.error('Failed to get presets:', error);
             res.status(500).json({ error: 'Failed to retrieve presets' });
@@ -103,13 +14,13 @@ module.exports = {
     getPresetDetails: async (req, res) => {
         try {
             const { id } = req.params;
-            const result = await getPresetDetails(id);
+            const preset = Preset.find(id);
 
-            if (!result) {
+            if (!preset) {
                 return res.status(404).json({ error: 'Preset not found' });
             }
 
-            res.json(result);
+            res.json(preset.toDetailJSON());
         } catch (error) {
             console.error(`Failed to get preset ${req.params.id}:`, error);
             res.status(500).json({ error: 'Failed to retrieve preset details' });
@@ -124,28 +35,23 @@ module.exports = {
                 return res.status(400).json({ error: 'Valid preset name is required' });
             }
 
-            await beginTransaction();
+            let presetId;
+            Preset.transaction(() => {
+                const maxOrder = Preset.max('display_order');
+                const nextOrder = maxOrder !== -1 ? maxOrder + 1 : 0;
 
-            const maxOrderResult = await dbGet("SELECT MAX(display_order) as maxOrder FROM presets");
-            const nextOrder = maxOrderResult.maxOrder !== null ? maxOrderResult.maxOrder + 1 : 0;
+                // Insert preset
+                presetId = Preset.create({ name: name.trim(), display_order: nextOrder });
 
-            // Insert preset
-            const result = await dbRun(
-                'INSERT INTO presets (name, display_order) VALUES (?, ?)',
-                [name.trim(), nextOrder]
-            );
-            const presetId = result.lastID;
-
-            // Associate instances
-            await associateInstances(presetId, instances);
-
-            await commitTransaction();
+                // Associate instances
+                const preset = Preset.find(presetId);
+                preset.associateInstances(instances);
+            })();
 
             // Return the created preset
-            const newPreset = await getPresetDetails(presetId);
-            res.status(201).json(newPreset);
+            const newPreset = Preset.find(presetId);
+            res.status(201).json(newPreset.toDetailJSON());
         } catch (error) {
-            await rollbackTransaction();
             console.error('Failed to create preset:', error);
 
             if (error.message && error.message.includes('UNIQUE constraint failed')) {
@@ -161,36 +67,29 @@ module.exports = {
             const { id } = req.params;
             const { name, instances } = req.body;
 
-            await beginTransaction();
-
-            // Update preset name if provided
-            if (name) {
-                const result = await dbRun(
-                    'UPDATE presets SET name = ? WHERE id = ?',
-                    [name.trim(), id]
-                );
-
-                if (result.changes === 0) {
-                    throw new Error('Preset not found');
+            Preset.transaction(() => {
+                // Update preset name if provided
+                if (name) {
+                    const result = Preset.update(id, { name: name.trim() });
+                    if (result.changes === 0) {
+                        throw new Error('Preset not found');
+                    }
                 }
-            }
 
-            // Update instances if provided
-            if (instances !== undefined) {
-                // Delete existing instances
-                await dbRun('DELETE FROM preset_instances WHERE preset_id = ?', [id]);
-
-                // Add new instances
-                await associateInstances(id, instances);
-            }
-
-            await commitTransaction();
+                // Update instances if provided
+                if (instances !== undefined) {
+                    const preset = Preset.find(id);
+                    if (preset) {
+                        preset.clearInstances();
+                        preset.associateInstances(instances);
+                    }
+                }
+            })();
 
             // Return the updated preset
-            const updatedPreset = await getPresetDetails(id);
-            res.json(updatedPreset);
+            const updatedPreset = Preset.find(id);
+            res.json(updatedPreset.toDetailJSON());
         } catch (error) {
-            await rollbackTransaction();
             console.error(`Failed to update preset ${req.params.id}:`, error);
 
             if (error.message === 'Preset not found') {
@@ -208,14 +107,14 @@ module.exports = {
             const { id } = req.params;
 
             // Check if preset exists
-            const presetExists = await dbGet('SELECT 1 FROM presets WHERE id = ?', [id]);
+            const presetExists = Preset.exists(id);
 
             if (!presetExists) {
                 return res.status(404).json({ error: 'Preset not found' });
             }
 
             // Delete preset (preset_instances will be deleted due to CASCADE)
-            const result = await dbRun('DELETE FROM presets WHERE id = ?', [id]);
+            const result = Preset.delete(id);
 
             if (result.changes === 0) {
                 return res.status(404).json({ error: 'Preset not found' });
@@ -233,7 +132,7 @@ module.exports = {
             const { id } = req.params;
 
             // Get preset details
-            const preset = await getPresetDetails(id);
+            const preset = Preset.find(id);
 
             if (!preset) {
                 return res.status(404).json({ error: 'Preset not found' });
@@ -247,7 +146,7 @@ module.exports = {
                         // Check if instance_preset is a number or an object
                         const stateToApply = !isNaN(instance.instance_preset)
                             ? { ps: Number(instance.instance_preset) }
-                            : JSON.parse(instance.instance_preset);
+                            : typeof instance.instance_preset === 'string' ? JSON.parse(instance.instance_preset) : instance.instance_preset;
 
                         // Call setState with the appropriate body
                         const result = await wledController.setState(
@@ -292,30 +191,18 @@ module.exports = {
         }
 
         try {
-            await beginTransaction();
-
-            // Update the order for each ID in the array
-            for (let index = 0; index < orderedIds.length; index++) {
-                const id = orderedIds[index];
-                await dbRun("UPDATE presets SET display_order = ? WHERE id = ?", [index, id]);
-            }
-
-            await commitTransaction();
+            Preset.transaction(() => {
+                // Update the order for each ID in the array
+                for (let index = 0; index < orderedIds.length; index++) {
+                    const id = orderedIds[index];
+                    Preset.update(id, { display_order: index });
+                }
+            })();
 
             // Return the reordered presets
-            const presets = await dbQuery(`
-             SELECT
-               p.id,
-               p.name,
-               p.display_order,
-               (SELECT COUNT(*) FROM preset_instances WHERE preset_id = p.id) as instance_count
-             FROM presets p
-             ORDER BY p.display_order
-    `       );
-
-            res.json(presets);
+            const presets = Preset.all('display_order');
+            res.json(presets.map(p => p.toSummaryJSON()));
         } catch (error) {
-            await rollbackTransaction();
             console.error('Failed to reorder presets:', error);
             res.status(500).json({ error: error.message });
         }

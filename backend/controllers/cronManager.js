@@ -1,28 +1,9 @@
 const cron = require('node-cron');
-const db = require('../config/database');
+const Schedule = require('../models/Schedule');
 const presetsController = require('./presets');
 
 // Store active cron jobs
 const activeCrons = new Map();
-
-// Database helper functions
-const dbQuery = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.all(sql, params, (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-        });
-    });
-};
-
-const dbGet = (sql, params = []) => {
-    return new Promise((resolve, reject) => {
-        db.get(sql, params, (err, row) => {
-            if (err) reject(err);
-            else resolve(row);
-        });
-    });
-};
 
 // Validate cron expression
 const isValidCronExpression = (expression) => {
@@ -91,10 +72,7 @@ const scheduleCronJob = async (schedule) => {
 
             // Get fresh schedule data from database to check current status
             try {
-                const currentSchedule = await dbGet(`
-                    SELECT id, name, cron_expression, start_date, stop_date, enabled, preset_id
-                    FROM preset_schedules WHERE id = ?
-                `, [schedule.id]);
+                const currentSchedule = Schedule.find(schedule.id);
 
                 if (!currentSchedule) {
                     console.log(`Schedule ${schedule.id} no longer exists, stopping cron job`);
@@ -140,11 +118,7 @@ const stopCronJob = (scheduleId) => {
 // Initialize all cron jobs at server start
 const initializeCronJobs = async () => {
     try {
-        const schedules = await dbQuery(`
-            SELECT id, name, cron_expression, start_date, stop_date, enabled, preset_id
-            FROM preset_schedules
-            WHERE enabled = 1
-        `);
+        const schedules = Schedule.where('enabled', 1);
 
         console.log(`Initializing ${schedules.length} cron jobs...`);
 
@@ -165,11 +139,7 @@ const updateCronJob = async (scheduleId) => {
 
     // Get updated schedule
     try {
-        const schedule = await dbGet(`
-            SELECT id, name, cron_expression, start_date, stop_date, enabled, preset_id
-            FROM preset_schedules
-            WHERE id = ?
-        `, [scheduleId]);
+        const schedule = Schedule.find(scheduleId);
 
         if (schedule && schedule.enabled) {
             await scheduleCronJob(schedule);

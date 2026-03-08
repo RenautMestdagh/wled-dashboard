@@ -109,14 +109,14 @@ class ApiService with ChangeNotifier {
   }
 
   Future<void> fetchData({bool showAPISuccess = true}) async {
-    if(!_isHealthy)
-      if(!await _checkHealth(showAPISuccess))
-        return;
-
     if (_apiKey.isEmpty) {
       _errorMessage = 'API key is not configured';
       return;
     }
+
+    if(!_isHealthy)
+      if(!await _checkHealth(showAPISuccess))
+        return;
 
     _isLoading = true;
     _errorMessage = null;
