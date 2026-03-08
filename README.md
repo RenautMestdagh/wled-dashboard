@@ -14,7 +14,7 @@ The **WLED Dashboard** is a cross-platform tool for managing multiple WLED LED c
 
 | Presets                                                          | WLED instance                                                  | Settings                                                               |
 |------------------------------------------------------------------|----------------------------------------------------------------|------------------------------------------------------------------------|
-| <img src="screenshots/Screenshot_1.jpg" width="200" alt="Login"> | <img src="screenshots/Screenshot_2.jpg" width="200" alt="2FA"> | <img src="screenshots/Screenshot_3.jpg" width="200" alt="Home Screen"> |
+| <img src="screenshots/Screenshot_1.jpg" width="200" alt="Presets"> | <img src="screenshots/Screenshot_2.jpg" width="200" alt="WLED instance"> | <img src="screenshots/Screenshot_3.jpg" width="200" alt="Settings"> |
 
 ## Architecture
 
