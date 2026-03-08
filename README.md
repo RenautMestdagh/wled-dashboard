@@ -10,6 +10,12 @@ The **WLED Dashboard** is a cross-platform tool for managing multiple WLED LED c
 - **Cross-Platform Support**: Runs on iOS, Android, web, with responsive Material 3 design and theme options.
 - **Security**: API key authentication ensures protected communication between frontend and backend.
 
+## Screenshots
+
+| Login | 2FA | Home Screen |
+|-------|-----|-------------|
+| <img src="screenshots/Screenshot_1.jpg" width="200" alt="Login"> | <img src="screenshots/Screenshot_2.jpg" width="200" alt="2FA"> | <img src="screenshots/Screenshot_3.jpg" width="200" alt="Home Screen"> |
+
 ## Architecture
 
 The project separates concerns for scalability:
