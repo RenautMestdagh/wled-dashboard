@@ -1,5 +1,6 @@
 const rateLimit = require("express-rate-limit");
-const API_KEYS = new Set(process.env.API_KEYS?.split(',') || []);
+const { readSecret } = require("../utils/secrets");
+const API_KEYS = new Set(readSecret('API_KEYS')?.split(',') || []);
 
 // Initialize rate limiter once
 const limiter = rateLimit({
@@ -8,6 +9,8 @@ const limiter = rateLimit({
 });
 
 module.exports = {
+    API_KEYS,
+
     // Custom rate limiting middleware that skips if API key is valid
     rateLimitUnlessAuthenticated: (req, res, next) => {
         const apiKey = req.headers['x-api-key'] || req.query.apiKey;

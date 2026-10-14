@@ -3,7 +3,7 @@ const morgan = require('morgan');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const {authenticate, rateLimitUnlessAuthenticated} = require("./middlewares/auth");
+const {API_KEYS, authenticate, rateLimitUnlessAuthenticated} = require("./middlewares/auth");
 const path = require('path');
 const cronManager = require('./controllers/cronManager');
 
@@ -60,7 +60,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Health Check
 app.get('/health', (req, res) => {
-    const API_KEYS = new Set(process.env.API_KEYS?.split(',') || []);
     const givenKey = req.headers['x-api-key'] || req.query.apiKey;
     res.status(200).json({ status: 'healthy', authenticated: (givenKey && API_KEYS.has(givenKey)) ?? false });
 });
