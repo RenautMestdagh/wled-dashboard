@@ -876,6 +876,8 @@ API_KEYS=your-key-123
 ALLOWED_ORIGINS=mydomain.com
 ```
 
+`API_KEYS` can also be read from a file (e.g. a Docker secret): set `API_KEYS_FILE=/run/secrets/api_keys` instead. `API_KEYS_FILE` takes precedence over `API_KEYS`.
+
 ## Setup
 
 1. Navigate: `cd backend`
