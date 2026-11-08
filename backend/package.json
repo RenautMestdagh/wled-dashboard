@@ -16,9 +16,9 @@
     "axios": "^1.13.5",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
+    "dotenv": "^18.0.9",
     "express": "^5.2.1",
-    "express-rate-limit": "^7.5.0",
+    "express-rate-limit": "^8.7.3",
     "helmet": "^8.1.0",
     "morgan": "^1.12.1",
     "multicast-dns": "^7.2.5",
@@ -26,5 +26,10 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
+  },
+  "overrides": {
+    "nodemon": {
+      "minimatch": "^11.0.5"
+    }
   }
 }
