@@ -70,6 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     defaults:
       run:
         working-directory: frontend
@@ -86,12 +87,22 @@ jobs:
           flutter-version: 3.44.0
           cache: true
 
+      # The release key lives in Infisical (project ci, /android); GitHub logs in with OIDC, no stored secret
+      - uses: Infisical/secrets-action@v1.0.18
+        with:
+          method: oidc
+          identity-id: 59a77282-0ae7-428f-99b2-b253c69e58d8
+          domain: https://eu.infisical.com
+          project-id: 815c357a-baf5-41fa-9d10-41f718c63a8a
+          env-slug: prod
+          secret-path: /android
+
       - name: Write signing key
         env:
-          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEYSTORE: ${{ env.WLED_KEYSTORE_BASE64 }}
+          PASSWORD: ${{ env.WLED_KEYSTORE_PASSWORD }}
         run: |
-          [ -n "$KEYSTORE" ] && [ -n "$PASSWORD" ] || { echo "ANDROID_KEYSTORE_BASE64 and ANDROID_KEYSTORE_PASSWORD secrets are required"; exit 1; }
+          [ -n "$KEYSTORE" ] && [ -n "$PASSWORD" ] || { echo "WLED_KEYSTORE_BASE64 and WLED_KEYSTORE_PASSWORD are missing in Infisical"; exit 1; }
           echo "$KEYSTORE" | base64 -d > android/app/release.jks
           printf 'storeFile=release.jks\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=release\n' "$PASSWORD" "$PASSWORD" > android/key.properties
 
