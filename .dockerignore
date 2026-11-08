@@ -1,0 +1,9 @@
+.git
+.github
+.idea
+backend/node_modules
+backend/.env
+backend/data
+backend/*.db
+frontend/build
+frontend/.dart_tool
