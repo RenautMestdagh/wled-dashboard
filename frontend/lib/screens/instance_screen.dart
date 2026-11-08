@@ -175,6 +175,7 @@ class _InstanceScreenState extends State<InstanceScreen> {
       await apiService.updateDeviceState(widget.instance.id, {'on': newPowerState});
       _backgroundLoadDeviceData();
     } catch (e) {
+      if (!mounted) return;
       setState(() => _power = !newPowerState); // Revert on failure
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to toggle power')),
@@ -197,6 +198,7 @@ class _InstanceScreenState extends State<InstanceScreen> {
       );
       _backgroundLoadDeviceData();
     } catch (e) {
+      if (!mounted) return;
       // Restore previous brightness on failure
       setState(() => _brightness = _deviceState['bri']?.toDouble() ?? 128);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -340,6 +342,7 @@ class _InstanceScreenState extends State<InstanceScreen> {
       await apiService.updateDeviceState(widget.instance.id, {'ps': presetIdInt});
       Future.delayed(Duration(milliseconds: 500), () => _backgroundLoadDeviceData());
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to apply preset')),
       );
@@ -431,7 +434,7 @@ class _InstanceScreenState extends State<InstanceScreen> {
       ),
     );
 
-    if (confirmed == true) {
+    if (confirmed == true && mounted) {
       try {
         final apiService = Provider.of<ApiService>(context, listen: false);
         await apiService.deleteInstance(widget.instance.id);
@@ -587,7 +590,7 @@ class _InstanceScreenState extends State<InstanceScreen> {
                                                     value: _getRGBBrightness(),
                                                     min: 0,
                                                     max: 1.0,
-                                                    label: (_getRGBBrightness() * 100).toStringAsFixed(0) + "%",
+                                                    label: "${(_getRGBBrightness() * 100).toStringAsFixed(0)}%",
                                                     onChanged: (value) {
                                                       setState(() {
                                                         final maxVal = _colors[0].take(3).reduce((a, b) => a > b ? a : b);
@@ -626,7 +629,7 @@ class _InstanceScreenState extends State<InstanceScreen> {
                                                     value: _colors[0].length > 3 ? _colors[0][3].toDouble() : 0,
                                                     min: 0,
                                                     max: 1.0,
-                                                    label: (_colors[0].length > 3 ? _colors[0][3] * 100 : 0).toStringAsFixed(0) + "%",
+                                                    label: "${(_colors[0].length > 3 ? _colors[0][3] * 100 : 0).toStringAsFixed(0)}%",
                                                     onChanged: (value) {
                                                       setState(() {
                                                         if (_colors[0].length <= 3) {
@@ -722,7 +725,7 @@ class _InstanceScreenState extends State<InstanceScreen> {
                                         ),
                                       )
                                   );
-                                }).toList(),
+                                }),
                               // Add an empty spacer at the bottom if needed
                               const SizedBox(height: 16),
                             ],
