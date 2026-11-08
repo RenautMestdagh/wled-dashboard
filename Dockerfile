@@ -1,5 +1,5 @@
 # Stage 1: Build Flutter web app
-FROM ghcr.io/cirruslabs/flutter:3.32.0 AS flutter-build
+FROM ghcr.io/cirruslabs/flutter:3.44.0 AS flutter-build
 WORKDIR /app/frontend
 COPY frontend/ .
 RUN flutter pub get && flutter build web
