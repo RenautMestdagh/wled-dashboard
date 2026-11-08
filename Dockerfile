@@ -27,8 +27,10 @@ ENV DB_PATH=/data/database.db
 ENV PORT=3000
 WORKDIR /app/backend
 
-# Install dependencies
-RUN npm install --omit=dev
+# Install dependencies (better-sqlite3 13 ships no prebuilt binaries: compile it, then drop the compiler again)
+RUN apk add --no-cache --virtual .build-deps python3 make g++ && \
+    npm install --omit=dev && \
+    apk del .build-deps
 
 # Run as non-root user
 USER node
