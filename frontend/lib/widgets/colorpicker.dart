@@ -10,16 +10,16 @@ class ColorPicker extends StatefulWidget {
   final double size;
 
   const ColorPicker({
-    Key? key,
+    super.key,
     required this.initialColor,
     required this.scaleFactor,
     required this.onColorChanged,
     required this.onColorChangeEnd,
     this.size = 200,
-  }) : super(key: key);
+  });
 
   @override
-  _ColorPickerState createState() => _ColorPickerState();
+  State<ColorPicker> createState() => _ColorPickerState();
 }
 
 class _ColorPickerState extends State<ColorPicker> {

@@ -35,9 +35,6 @@ class _ReorderScreenState extends State<ReorderScreen> {
 
   void _onReorder(int oldIndex, int newIndex) {
     setState(() {
-      if (newIndex > oldIndex) {
-        newIndex -= 1;
-      }
       final item = _orderedItems.removeAt(oldIndex);
       _orderedItems.insert(newIndex, item);
     });
@@ -157,7 +154,7 @@ class _ReorderScreenState extends State<ReorderScreen> {
         onReorderEnd: (index) {
           HapticFeedback.vibrate();
         },
-        onReorder: _onReorder,
+        onReorderItem: _onReorder,
         proxyDecorator: proxyDecorator,
         children: _orderedItems.asMap().entries.map((entry) {
           final item = entry.value;

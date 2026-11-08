@@ -101,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
               instance: entry.value,
               onInstanceDeleted: () => _handleInstanceDeleted(index),
             );
-          }).toList(),
+          }),
           const SettingsScreen(),
         ];
 

@@ -10,8 +10,8 @@ import '../models/preset.dart';
 import '../models/schedule.dart';
 
 class ApiService with ChangeNotifier {
-  static const String BASE_URL_KEY = 'base_url';
-  static const String API_KEY_KEY = 'api_key';
+  static const String baseUrlKey = 'base_url';
+  static const String apiKeyKey = 'api_key';
 
   String _baseUrl = '';
   String _apiKey = '';
@@ -34,8 +34,8 @@ class ApiService with ChangeNotifier {
 
   Future<void> _loadStoredSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    _baseUrl = prefs.getString(BASE_URL_KEY) ?? '';
-    _apiKey = prefs.getString(API_KEY_KEY) ?? '';
+    _baseUrl = prefs.getString(baseUrlKey) ?? '';
+    _apiKey = prefs.getString(apiKeyKey) ?? '';
 
     if(_baseUrl == '' || _apiKey == ''){
       _errorMessage = 'Please configure API settings';
@@ -45,7 +45,7 @@ class ApiService with ChangeNotifier {
     await fetchData(showAPISuccess: false);
   }
 
-  Future<bool> _checkHealth(showAPISuccess) async {
+  Future<bool> _checkHealth(bool showAPISuccess) async {
     try {
       final response = await http.get(
         Uri.parse('$_baseUrl/health'),
@@ -54,13 +54,14 @@ class ApiService with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final _authenticated = data['authenticated'] ?? false;
-        _isHealthy = data['status'] == 'healthy' && _authenticated;
+        final authenticated = data['authenticated'] ?? false;
+        _isHealthy = data['status'] == 'healthy' && authenticated;
 
-        if(_isHealthy && showAPISuccess)
+        if(_isHealthy && showAPISuccess) {
           _successMessage = 'Connected to API';
-        else if(!_authenticated)
+        } else if(!authenticated) {
           _errorMessage = 'API key is not valid';
+        }
 
         return _isHealthy;
       } else {
@@ -93,13 +94,14 @@ class ApiService with ChangeNotifier {
 
     // Save to SharedPreferences
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(BASE_URL_KEY, baseUrl);
-    await prefs.setString(API_KEY_KEY, apiKey);
+    await prefs.setString(baseUrlKey, baseUrl);
+    await prefs.setString(apiKeyKey, apiKey);
 
     _isHealthy = false;
     await fetchData();
-    if(!_isHealthy)
+    if(!_isHealthy) {
       clearVariables();
+    }
   }
 
   void clearVariables() {
@@ -114,9 +116,11 @@ class ApiService with ChangeNotifier {
       return;
     }
 
-    if(!_isHealthy)
-      if(!await _checkHealth(showAPISuccess))
+    if(!_isHealthy) {
+      if(!await _checkHealth(showAPISuccess)) {
         return;
+      }
+    }
 
     _isLoading = true;
     _errorMessage = null;
@@ -261,8 +265,9 @@ class ApiService with ChangeNotifier {
         final newInstance = WLEDInstance.fromJson(json.decode(response.body));
         _instances.add(newInstance);
 
-        if(!fromAutodiscover)
+        if(!fromAutodiscover) {
           _successMessage = 'Instance created successfully';
+        }
 
         return newInstance;
       } else {
@@ -462,8 +467,9 @@ class ApiService with ChangeNotifier {
       if (response.statusCode == 200) {
 
         final index = _presets.indexWhere((preset) => preset.id == presetId);
-        if (index == -1)
+        if (index == -1) {
           throw Exception('Preset not found for id: $presetId');
+        }
 
         _presets[index] = Preset.fromJson(json.decode(response.body));
         _successMessage = 'Preset updated successfully';
@@ -734,8 +740,9 @@ class ApiService with ChangeNotifier {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if(instance.name == '')
+        if(instance.name == '') {
           instance.name = data['name'];
+        }
 
         // Assuming 'data' is a Map<String, dynamic> containing the light info
         final lc = data['leds']['lc'] as int; // Extract the capability byte

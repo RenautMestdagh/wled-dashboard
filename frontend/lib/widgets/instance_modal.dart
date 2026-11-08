@@ -151,13 +151,15 @@ class _InstanceModalState extends State<InstanceModal> {
           _nameController.text.trim(),
         );
 
-        if (widget.onInstanceCreated != null)
+        if (widget.onInstanceCreated != null) {
           Future.delayed(Duration(milliseconds: 500), () => {
             widget.onInstanceCreated!(apiService.instances.length-1)
           });
+        }
       }
-      if (mounted)
+      if (mounted) {
         Navigator.pop(context, true);
+      }
     } catch (e) {
       // Error is already handled by ApiService
     } finally {

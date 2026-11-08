@@ -83,7 +83,7 @@ class WLEDDiscoveryService {
       _mdnsClient.stop();
 
     } catch (e) {
-      print('mDNS discovery error: $e');
+      debugPrint('mDNS discovery error: $e');
       _mdnsClient.stop();
       rethrow;
     }
@@ -130,7 +130,7 @@ class WLEDDiscoveryService {
   // Verify a single device by querying its JSON info endpoint
   Future<bool> _verifyDevice(String deviceIp) async {
     try {
-      final Uri uri = Uri.http('${deviceIp}', '/json/info');
+      final Uri uri = Uri.http(deviceIp, '/json/info');
       final http.Response response = await http
           .get(uri)
           .timeout(_apiTimeout, onTimeout: () => http.Response('Timeout', 408));
@@ -141,7 +141,7 @@ class WLEDDiscoveryService {
       }
     } catch (e) {
       // Device is not WLED or unreachable
-      print('Device ${deviceIp} verification failed: $e');
+      debugPrint('Device $deviceIp verification failed: $e');
     }
     return false;
   }

@@ -433,7 +433,7 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
                   Text('Preset', style: theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int>(
-                    value: _selectedPresetId,
+                    initialValue: _selectedPresetId,
                     decoration: InputDecoration(
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       isDense: true,
@@ -570,7 +570,7 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
                                         child: Text(
                                           _startDate == null
                                               ? 'No start date'
-                                              : '${_startDate!.toLocal().toString().split(' ')[0]}',
+                                              : _startDate!.toLocal().toString().split(' ')[0],
                                           style: theme.textTheme.bodyMedium?.copyWith(
                                             color: _startDate == null ? Colors.grey.shade500 : theme.colorScheme.onSurface,
                                           ),
@@ -624,7 +624,7 @@ class _ScheduleEditScreenState extends State<ScheduleEditScreen> {
                                         child: Text(
                                           _endDate == null
                                               ? 'No end date'
-                                              : '${_endDate!.toLocal().toString().split(' ')[0]}',
+                                              : _endDate!.toLocal().toString().split(' ')[0],
                                           style: theme.textTheme.bodyMedium?.copyWith(
                                             color: _endDate == null ? Colors.grey.shade500 : theme.colorScheme.onSurface,
                                           ),

@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/preset.dart';
@@ -109,7 +107,7 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
           });
         }
       } catch (e) {
-        print('Could not load presets for ${instance.name}: ${e.toString()}');
+        debugPrint('Could not load presets for ${instance.name}: ${e.toString()}');
       }
     }
   }
@@ -137,7 +135,7 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
           });
         }
       } catch (e) {
-        print('Could not get current state for ${instance.name}: ${e.toString()}');
+        debugPrint('Could not get current state for ${instance.name}: ${e.toString()}');
       }
     }
   }
@@ -377,7 +375,7 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
           title: Text(instance.name == '' ? 'WLED' : instance.name, style: theme.textTheme.bodyLarge),
           value: isSelected,
           onChanged: (_) => _toggleInstanceSelection(instance),
-          activeColor: theme.colorScheme.primary,
+          activeThumbColor: theme.colorScheme.primary,
         ),
 
         // Only if instance is selected, show the "Use current state" checkbox
@@ -469,7 +467,7 @@ class _PresetEditScreenState extends State<PresetEditScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: DropdownButtonFormField<dynamic>(
-              value: safeValue,
+              initialValue: safeValue,
               items: presetItems.cast<DropdownMenuItem<dynamic>>(),
               onChanged: (value) {
                 if (value != null) {

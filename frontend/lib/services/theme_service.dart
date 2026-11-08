@@ -14,7 +14,7 @@ class ThemeService with ChangeNotifier {
 
   bool get isDarkMode {
     if (_themeMode == ThemeMode.system) {
-      var brightness = SchedulerBinding.instance.window.platformBrightness;
+      var brightness = SchedulerBinding.instance.platformDispatcher.platformBrightness;
       return brightness == Brightness.dark;
     }
     return _themeMode == ThemeMode.dark;
@@ -28,7 +28,7 @@ class ThemeService with ChangeNotifier {
         _themeMode = ThemeMode.values[themeIndex];
       }
     } catch (e) {
-      print('Error loading theme: $e');
+      debugPrint('Error loading theme: $e');
     }
   }
 
@@ -40,7 +40,7 @@ class ThemeService with ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_themeKey, _themeMode.index);
     } catch (e) {
-      print('Error saving theme: $e');
+      debugPrint('Error saving theme: $e');
     }
   }
 }

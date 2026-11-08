@@ -277,8 +277,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         trailing: DiscoveryAnimationWidget(isDiscovering: _isDiscovering),
                         onTap: isMdnsSupported
                             ? () async {
-                          if(_isDiscovering)
+                          if(_isDiscovering) {
                             return;
+                          }
 
                           _urlFocusNode.unfocus();
                           _keyFocusNode.unfocus();

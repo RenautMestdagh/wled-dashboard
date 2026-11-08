@@ -75,8 +75,6 @@ class ScheduleCard extends StatelessWidget {
 
       final minute = parts[0];
       final hour = parts[1];
-      final dayOfMonth = parts[2];
-      final month = parts[3];
       final dayOfWeek = parts[4];
 
       // Parse time
@@ -169,7 +167,7 @@ class ScheduleCard extends StatelessWidget {
                   Switch(
                     value: isActive,
                     onChanged: onToggleEnabled,
-                    activeColor: theme.colorScheme.primary,
+                    activeThumbColor: theme.colorScheme.primary,
                   ),
                 ],
               ),
