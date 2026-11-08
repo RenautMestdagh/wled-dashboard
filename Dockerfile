@@ -5,7 +5,7 @@ COPY frontend/ .
 RUN flutter pub get && flutter build web
 
 # Stage 2: Build Node.js backend
-FROM node:22-alpine
+FROM node:26-alpine
 WORKDIR /app
 
 # Install timezone data
