@@ -874,7 +874,10 @@ NODE_ENV=production
 DB_PATH=/data/database.db
 API_KEYS=your-key-123
 ALLOWED_ORIGINS=mydomain.com
+TRUST_PROXY=loopback, linklocal, uniquelocal
 ```
+
+`TRUST_PROXY` lists the addresses of the reverse proxies whose `X-Forwarded-For` header is trusted for the client IP (and so for rate limiting). The default trusts proxies on localhost and private networks; set it to your proxy's address or range, e.g. `100.64.0.0/10` for a proxy reaching the app over Tailscale.
 
 `API_KEYS` can also be read from a file (e.g. a Docker secret): set `API_KEYS_FILE=/run/secrets/api_keys` instead. `API_KEYS_FILE` takes precedence over `API_KEYS`.
 

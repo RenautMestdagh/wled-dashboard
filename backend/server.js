@@ -9,7 +9,8 @@ const cronManager = require('./controllers/cronManager');
 
 const app = express();
 
-app.set('trust proxy', true);
+// Only the reverse proxy in front of the app may set the client IP; `true` would let anyone fake it past the rate limit
+app.set('trust proxy', process.env.TRUST_PROXY || 'loopback, linklocal, uniquelocal');
 app.use(morgan('dev'));
 
 const corsOptions = {
