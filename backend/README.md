@@ -885,8 +885,10 @@ TRUST_PROXY=loopback, linklocal, uniquelocal
 
 1. Navigate: `cd backend`
 2. Install: `npm install`
-3. Configure: Create `.env` with above variables
-4. Run: `node server.js`
+3. Configure: the local values are in Infisical (homelab-rennet-nas → Development → `/wled`), loaded by
+   `npm run dev` through the [Infisical CLI](https://infisical.com/docs/cli/overview) (`infisical login` once).
+   Without it, copy `.env.example` to `.env` and fill it in
+4. Run: `npm run dev` (or `node server.js` with a `.env`)
 5. Verify: `curl http://your-server:3000/health`
 
 ## Key Functionalities Explained
