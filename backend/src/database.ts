@@ -1,36 +1,11 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+import Database from 'better-sqlite3';
 
-// Resolve DB path based on environment
-const resolveDBPath = () => {
-    if (process.env.DB_PATH) {
-        return process.env.DB_PATH;
-    }
-    return process.env.NODE_ENV === 'production'
-        ? '/data/database.db'
-        : path.join(__dirname, '../data/database.db');
-};
+export type Db = Database.Database;
 
-const DB_PATH = resolveDBPath();
-const DB_DIR = path.dirname(DB_PATH);
-
-// Ensure directory exists
-if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, {
-        recursive: true,
-        mode: process.env.NODE_ENV === 'production' ? 0o750 : 0o777
-    });
-}
-
-const db = new Database(DB_PATH, {
-    verbose: console.log
-});
-
-db.pragma('foreign_keys = ON');
-
-// Initialize database schema
-db.exec(`
+// Append only: the index + 1 of a migration is the user_version it brings the database to.
+const migrations = [
+  // The schema 1.2.0 and earlier created at every start, so on their databases this changes nothing
+  `
     CREATE TABLE IF NOT EXISTS instances (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ip TEXT UNIQUE NOT NULL,
@@ -64,6 +39,28 @@ db.exec(`
         preset_id INTEGER NOT NULL,
         FOREIGN KEY (preset_id) REFERENCES presets(id) ON DELETE CASCADE
     );
-`);
+  `,
+  `
+    ALTER TABLE instances DROP COLUMN last_seen;
+    UPDATE instances SET name = '' WHERE name IS NULL;
+  `,
+];
 
-module.exports = db;
+export function openDatabase(path: string): Db {
+  const db = new Database(path);
+  db.pragma('foreign_keys = ON');
+  migrate(db);
+  return db;
+}
+
+function migrate(db: Db): void {
+  const version = db.pragma('user_version', { simple: true }) as number;
+
+  db.transaction(() => {
+    for (const [index, sql] of migrations.entries()) {
+      if (index < version) continue;
+      db.exec(sql);
+      db.pragma(`user_version = ${index + 1}`);
+    }
+  })();
+}

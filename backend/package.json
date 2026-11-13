@@ -1,35 +1,37 @@
 {
   "name": "wled-dashboard",
   "version": "1.2.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "run": "node server.js",
-    "dev": "infisical run --path=/wled -- nodemon server.js"
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=26"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "description": "",
+  "scripts": {
+    "start": "node src/server.ts",
+    "dev": "infisical run --path=/wled -- node --watch src/server.ts",
+    "test": "node --test 'test/*.test.ts'",
+    "check": "prettier --check . && tsc",
+    "format": "prettier --write ."
+  },
   "dependencies": {
-    "axios": "^1.13.5",
-    "better-sqlite3": "^13.0.3",
-    "cors": "^2.8.5",
-    "dotenv": "^18.0.9",
-    "express": "^5.2.1",
-    "express-rate-limit": "^8.7.3",
-    "helmet": "^8.1.0",
+    "better-sqlite3": "^13.1.1",
+    "dns-packet": "^5.6.1",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.4",
+    "helmet": "^8.3.0",
     "morgan": "^1.12.1",
-    "multicast-dns": "^7.2.5",
-    "node-cron": "^4.2.1"
+    "node-cron": "^4.6.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/dns-packet": "^5.6.5",
+    "@types/express": "^5.0.6",
+    "@types/morgan": "^1.9.10",
+    "@types/node": "^26.6.6",
+    "prettier": "^3.10.1",
+    "typescript": "^7.0.2"
   },
-  "overrides": {
-    "nodemon": {
-      "minimatch": "^11.0.5"
-    }
+  "allowScripts": {
+    "better-sqlite3": false
   }
 }
