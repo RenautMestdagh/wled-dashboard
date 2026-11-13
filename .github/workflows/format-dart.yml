@@ -1,0 +1,39 @@
+name: Format Dart
+
+on:
+  push:
+    branches: [master]
+    paths: ['frontend/**.dart', 'frontend/analysis_options.yaml']
+  pull_request:
+    branches: [master]
+    paths: ['frontend/**.dart', 'frontend/analysis_options.yaml']
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: frontend/.fvmrc
+          cache: true
+
+      # Without packages dart format can't read analysis_options.yaml and falls back to 80 columns
+      - name: Format
+        run: |
+          flutter pub get
+          dart format .
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: 'style: apply dart format'

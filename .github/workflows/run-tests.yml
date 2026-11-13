@@ -1,0 +1,57 @@
+name: Run tests
+
+on:
+  pull_request:
+    branches: [master]
+  # main.yml runs these before it builds anything, also on every push to master
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+
+      # The same Node major as the Dockerfile
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - name: Format and types
+        run: npm run check
+
+      - name: Test
+        run: npm test
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version-file: frontend/.fvmrc
+          cache: true
+
+      - name: Lint
+        run: |
+          flutter pub get
+          flutter analyze
+
+      - name: Test
+        run: flutter test

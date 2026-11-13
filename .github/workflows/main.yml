@@ -1,10 +1,11 @@
 name: Build and deploy
 
-# A push to main only checks that the image builds. Publishing a GitHub release vX.Y.Z (the version
-# in backend/package.json) pushes the image as X.Y.Z, X.Y and latest, deploys it and attaches the APK.
+# A push to master runs the tests and checks that the image builds. Publishing a GitHub release vX.Y.Z (the version
+# in backend/package.json and frontend/pubspec.yaml) also pushes the image as X.Y.Z, X.Y and latest, deploys it and
+# attaches the APK.
 on:
   push:
-    branches: [main]
+    branches: [master]
   release:
     types: [published]
 
@@ -18,8 +19,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    name: Test
+    uses: ./.github/workflows/run-tests.yml
+
   build:
     name: Build image
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -27,8 +33,10 @@ jobs:
       - name: Version matches the tag
         if: github.event_name == 'release'
         run: |
-          version=$(node -p "require('./backend/package.json').version")
-          [ "v$version" = "$GITHUB_REF_NAME" ] || { echo "backend/package.json has $version, tag $GITHUB_REF_NAME"; exit 1; }
+          backend=$(node -p "require('./backend/package.json').version")
+          frontend=$(sed -n 's/^version: *\([^+]*\).*/\1/p' frontend/pubspec.yaml)
+          [ "v$backend" = "$GITHUB_REF_NAME" ] || { echo "backend/package.json has $backend, tag $GITHUB_REF_NAME"; exit 1; }
+          [ "v$frontend" = "$GITHUB_REF_NAME" ] || { echo "frontend/pubspec.yaml has $frontend, tag $GITHUB_REF_NAME"; exit 1; }
 
       - uses: docker/metadata-action@v6
         id: meta
@@ -73,6 +81,7 @@ jobs:
           URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
           SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
         run: |
+          # The ref must match the branch filter at the end of the webhook URL (/main), not this repo's branch
           body='{"ref":"refs/heads/main"}'
           sig=$(printf '%s' "$body" | openssl dgst -sha256 -hmac "$SECRET" | awk '{print $2}')
           code=$(curl -sS -o response.txt -w '%{http_code}' -X POST "$URL" \
@@ -83,6 +92,7 @@ jobs:
 
   apk:
     name: Build Android app
+    needs: build
     if: github.event_name == 'release'
     runs-on: ubuntu-latest
     permissions:
@@ -101,7 +111,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.44.0
+          flutter-version-file: frontend/.fvmrc
           cache: true
 
       # The release key lives in Infisical (project ci, /android/wled-dashboard); GitHub logs in with OIDC, no stored secret
@@ -124,9 +134,11 @@ jobs:
           printf 'storeFile=release.jks\nstorePassword=%s\nkeyPassword=%s\nkeyAlias=release\n' "$PASSWORD" "$PASSWORD" > android/key.properties
 
       - name: Build APK
-        run: flutter build apk --release --build-name "${GITHUB_REF_NAME#v}" --build-number "$GITHUB_RUN_NUMBER"
+        run: |
+          flutter build apk --release --build-name "${GITHUB_REF_NAME#v}" --build-number "$GITHUB_RUN_NUMBER"
+          mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/wled-dashboard.apk
 
       - name: Attach the APK to the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$GITHUB_REF_NAME" build/app/outputs/flutter-apk/app-release.apk --clobber
+        run: gh release upload "$GITHUB_REF_NAME" build/app/outputs/flutter-apk/wled-dashboard.apk --clobber
