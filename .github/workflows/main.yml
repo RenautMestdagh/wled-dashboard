@@ -115,7 +115,7 @@ jobs:
           cache: true
 
       # The release key lives in Infisical (project ci, /android/wled-dashboard); GitHub logs in with OIDC, no stored secret
-      - uses: Infisical/secrets-action@v1.0.18
+      - uses: Infisical/secrets-action@d2e351f16c6ca20d17c85e6c992e04bdeb64e87d # v1.0.18
         with:
           method: oidc
           identity-id: 59a77282-0ae7-428f-99b2-b253c69e58d8
