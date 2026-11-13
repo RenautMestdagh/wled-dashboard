@@ -1,71 +1,63 @@
 # WLED Dashboard
 
-The **WLED Dashboard** is a cross-platform tool for managing multiple WLED LED controllers. It allows one-tap control via presets, automating lighting across devices. The Flutter frontend provides an intuitive UI for mobile and web, while the Node.js backend handles secure API interactions and scheduling.
+Control several [WLED](https://kno.wled.ge) light controllers from one place: turn them on and off, set color and
+brightness, save **presets** that put a group of devices in a given state with one tap, and **schedule** presets.
 
-## Features
+One Docker image runs a Node backend that talks to the devices on the LAN, keeps devices, presets and schedules in
+SQLite, runs the schedules, and serves the Flutter web app. The Android app talks to the same backend.
 
-- **Preset-Based Control**: Group device states (e.g., power, brightness, colors) into presets for instant application to multiple WLED devices.
-- **Scheduling Automation**: Use cron expressions to trigger presets at specific times or intervals.
-- **Device Management**: Discover, add, reorder, and control WLED instances with real-time feedback.
-- **Cross-Platform Support**: Runs on iOS, Android, web, with responsive Material 3 design and theme options.
-- **Security**: API key authentication ensures protected communication between frontend and backend.
+| Presets | Devices | Device | Schedule |
+|---|---|---|---|
+| <img src=".github/pictures/presets.jpg" width="200" alt="Presets"> | <img src=".github/pictures/devices.jpg" width="200" alt="Devices"> | <img src=".github/pictures/device.jpg" width="200" alt="Device"> | <img src=".github/pictures/schedule-editor.jpg" width="200" alt="Schedule"> |
 
-## Screenshots
+<img src=".github/pictures/landscape-dark.jpg" width="600" alt="Wide screen in dark mode">
 
-| Presets                                                          | WLED instance                                                  | Settings                                                               |
-|------------------------------------------------------------------|----------------------------------------------------------------|------------------------------------------------------------------------|
-| <img src="screenshots/Screenshot_1.jpg" width="200" alt="Presets"> | <img src="screenshots/Screenshot_2.jpg" width="200" alt="WLED instance"> | <img src="screenshots/Screenshot_3.jpg" width="200" alt="Settings"> |
+## Running it
 
-## Architecture
-
-The project separates concerns for scalability:
-- **Frontend**: Handles user interactions, state caching, and API calls (via `http` package). It renders controls for instances, presets, and schedules.
-- **Backend**: Manages database (SQLite) for storing instances/presets/schedules, communicates with WLED devices via HTTP, and runs cron jobs for automation.
-- **Integration**: Frontend sends REST requests to the backend (e.g., `/api/presets/{id}/apply`), which proxies commands to WLED IPs.
-
-
-```mermaid
-graph TD
-    A[User] --> B[Flutter Frontend]
-    B --> C[Node.js Backend API]
-    C --> D[SQLite DB]
-    C --> E[WLED Devices]
-    
-    subgraph "Frontend Functionalities"
-        B1[Device Discovery mDNS]
-        B2[Preset/Schedule UI]
-        B3[Real-Time Controls]
-    end
-    
-    subgraph "Backend Functionalities"
-        C1[API Endpoints]
-        C2[Cron Scheduling]
-        C3[Device Proxy]
-    end
-    
-    B --> B1
-    B --> B2
-    B --> B3
-    
-    C --> C1
-    C --> C2
-    C --> C3
+```sh
+docker run -d --network host -v wled-data:/data -e API_KEYS=change-me ghcr.io/renautmestdagh/wled:latest
 ```
 
-## Quick Start
+Open `http://<host>:3000` and enter the API key under Settings. In the Android app also enter the server address; a
+release build only connects over HTTPS.
 
-1. Clone the repo: `git clone https://github.com/RenautMestdagh/wled-dashboard.git`.
-2. Set up backend: See [Backend README](backend/README.md).
-3. Set up frontend: See [Frontend README](frontend/README.md).
-4. Launch backend: `node backend/server.js`.
-5. Run frontend: `flutter run` in `/frontend`.
-6. Configure API URL/key in app settings.
+| Variable | Default | |
+|---|---|---|
+| `API_KEYS` / `API_KEYS_FILE` | — | Comma-separated keys, or a file holding them (Docker secrets). Required. |
+| `PORT` | `3000` | |
+| `DB_PATH` | `/data/database.db` | Upgraded in place on start. |
+| `TRUST_PROXY` | `loopback, linklocal, uniquelocal` | Proxies allowed to set `X-Forwarded-For` (rate limiting). |
+| `TZ` | `Europe/Brussels` | Schedules run in this time zone. |
 
-## Usage
+**Host networking is needed for "Find devices"**: discovery sends an mDNS query to the LAN, and multicast does not
+cross Docker's bridge network. Devices can always be added by IP address.
 
-- Add WLED devices in the app (manual or auto-discovery).
-- Create presets to define group states.
-- Apply presets or schedule them via cron.
-- Monitor/control individual devices in real-time.
+Every `/api` request needs the key in an `X-API-Key` header. Requests without a valid key are rate limited.
+`GET /health` needs no key.
 
-For detailed usage, refer to sub-READMEs.
+## Development
+
+The Flutter version is in `frontend/.fvmrc`; the Docker build and CI read it from there. The backend needs Node 26 and
+runs its TypeScript directly, without a build step.
+
+```sh
+cd backend
+npm ci
+npm test               # node --test, against an in-memory database and a fake WLED device
+npm run check          # prettier --check and tsc
+node --env-file=.env src/server.ts   # see .env.example; or `npm run dev` with Infisical
+
+cd frontend
+flutter test
+flutter analyze
+flutter run            # a debug build may also use http://, e.g. http://10.0.2.2:3000 from the emulator
+```
+
+The web app is served by the backend at the same origin, so run `flutter build web` and copy `build/web` to
+`backend/public` to try it locally.
+
+## Releasing
+
+`backend/package.json` and `frontend/pubspec.yaml` carry the version. Bump both, push to `master`, and publish a GitHub
+release `vX.Y.Z`: CI runs the tests, checks that both versions match the tag, pushes the image as `X.Y.Z`, `X.Y` and
+`latest`, triggers the deploy webhook and attaches `wled-dashboard.apk` to the release.
