@@ -1,0 +1,189 @@
+{
+  "@@locale": "nl",
+  "appTitle": "WLED Dashboard",
+  "presets": "Presets",
+  "devices": "Toestellen",
+  "schedules": "Planningen",
+  "settings": "Instellingen",
+  "addDevice": "Toestel toevoegen",
+  "editDevice": "Toestel bewerken",
+  "findDevices": "Toestellen zoeken",
+  "allOn": "Alles aan",
+  "allOff": "Alles uit",
+  "reorder": "Volgorde wijzigen",
+  "reorderDevices": "Volgorde van toestellen",
+  "reorderPresets": "Volgorde van presets",
+  "newPreset": "Nieuwe preset",
+  "editPreset": "Preset bewerken",
+  "newSchedule": "Nieuwe planning",
+  "editSchedule": "Planning bewerken",
+  "apply": "Toepassen",
+  "save": "Opslaan",
+  "cancel": "Annuleren",
+  "delete": "Verwijderen",
+  "retry": "Opnieuw",
+  "clear": "Wissen",
+  "name": "Naam",
+  "nameRequired": "Geef een naam",
+  "nameOptional": "Naam (optioneel)",
+  "nameOptionalHelp": "Leeg laten om de naam uit WLED te gebruiken",
+  "ipAddress": "IP-adres",
+  "ipAddressInvalid": "Geef een geldig IPv4-adres, zoals 192.168.1.25",
+  "noWledAtAddress": "Geen WLED-toestel gevonden op dit adres",
+  "deviceCount": "{count, plural, =1{1 toestel} other{{count} toestellen}}",
+  "@deviceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "presetApplied": "{name} toegepast",
+  "@presetApplied": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesDidNotAnswer": "Geen antwoord van: {names}",
+  "@devicesDidNotAnswer": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "devicesFound": "{count, plural, =0{Geen nieuwe toestellen gevonden} =1{1 nieuw toestel toegevoegd} other{{count} nieuwe toestellen toegevoegd}}",
+  "@devicesFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notReachable": "{ip} is niet bereikbaar",
+  "@notReachable": {
+    "placeholders": {
+      "ip": {
+        "type": "String"
+      }
+    }
+  },
+  "noPresetsTitle": "Nog geen presets",
+  "noPresetsMessage": "Een preset zet meerdere toestellen in één keer in de juiste stand.",
+  "noDevicesTitle": "Nog geen toestellen",
+  "noDevicesMessage": "Voeg een WLED-toestel toe met zijn IP-adres of zoek toestellen op het netwerk.",
+  "noSchedulesTitle": "Nog geen planningen",
+  "noSchedulesMessage": "Een planning past een preset automatisch toe op vaste tijden.",
+  "notConnectedTitle": "Niet verbonden",
+  "notConnectedMessage": "Vul bij Instellingen de verbindingsgegevens in.",
+  "loadFailed": "Laden mislukt",
+  "errorNetwork": "De server is niet bereikbaar. Controleer het adres en je verbinding.",
+  "errorUnauthorized": "De API-sleutel is ongeldig.",
+  "errorNotFound": "Dit bestaat niet meer. Vernieuw de lijst.",
+  "errorConflict": "Deze naam of dit adres is al in gebruik.",
+  "errorInvalid": "De server weigerde deze gegevens.",
+  "errorDevice": "Het toestel antwoordt niet.",
+  "errorServer": "Er ging iets mis op de server.",
+  "deleteDeviceTitle": "Toestel verwijderen",
+  "deleteDeviceMessage": "{name} verwijderen? Presets en planningen blijven bestaan; het toestel verdwijnt er alleen uit.",
+  "@deleteDeviceMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deletePresetTitle": "Preset verwijderen",
+  "deletePresetMessage": "{name} verwijderen? De planningen die deze preset toepassen, worden ook verwijderd.",
+  "@deletePresetMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteScheduleTitle": "Planning verwijderen",
+  "deleteScheduleMessage": "{name} verwijderen?",
+  "@deleteScheduleMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "wledPreset": "WLED-preset",
+  "wledPresets": "WLED-presets",
+  "currentState": "Huidige stand",
+  "savedState": "Bewaarde stand",
+  "currentStateHelp": "Bij het opslaan wordt de stand die het toestel nu heeft bewaard.",
+  "savedStateHelp": "De stand die bij het aanmaken van de preset bewaard werd.",
+  "choosePreset": "Kies een preset",
+  "noDevicePresets": "Dit toestel heeft geen presets.",
+  "brightness": "Helderheid",
+  "color": "Kleur",
+  "colorLevel": "Kleursterkte",
+  "white": "Wit",
+  "colorTemperature": "Kleurtemperatuur",
+  "preset": "Preset",
+  "time": "Tijd",
+  "days": "Dagen",
+  "everyDay": "elke dag",
+  "chooseWeekday": "Kies minstens één dag",
+  "period": "Periode",
+  "periodHelp": "Begin- en einddag tellen allebei mee. Zonder datum loopt de planning altijd.",
+  "startDate": "Vanaf",
+  "stopDate": "Tot en met",
+  "noDate": "Geen datum",
+  "stopBeforeStart": "De einddatum ligt voor de begindatum",
+  "fromDate": "vanaf {date}",
+  "@fromDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "untilDate": "tot en met {date}",
+  "@untilDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "dateRange": "{start} – {stop}",
+  "@dateRange": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "stop": {
+        "type": "String"
+      }
+    }
+  },
+  "presetNeededForSchedule": "Maak eerst een preset aan; een planning past er een toe.",
+  "cronReplaced": "Deze planning gebruikt de cron-expressie {cron}. Opslaan vervangt die door de tijd en dagen hieronder.",
+  "@cronReplaced": {
+    "placeholders": {
+      "cron": {
+        "type": "String"
+      }
+    }
+  },
+  "appearance": "Weergave",
+  "themeLight": "Licht",
+  "themeSystem": "Systeem",
+  "themeDark": "Donker",
+  "connection": "Verbinding",
+  "serverUrl": "Serveradres",
+  "serverUrlInvalid": "Geef een volledig adres, zoals https://leds.example.com",
+  "apiKey": "API-sleutel",
+  "apiKeyRequired": "Geef de API-sleutel",
+  "showKey": "Sleutel tonen",
+  "hideKey": "Sleutel verbergen",
+  "testAndSave": "Testen en opslaan",
+  "connected": "Verbonden"
+}
